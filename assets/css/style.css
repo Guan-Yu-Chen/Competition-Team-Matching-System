@@ -1,0 +1,642 @@
+:root {
+    --primary-gradient: linear-gradient(100deg, #4e54c8 0%, #8f94fb 100%);
+    --success-gradient: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+    --danger-gradient: linear-gradient(90deg, #ff6a6a 0%, #be93c5 100%);
+    --sidebar-gradient: linear-gradient(145deg, #f7f8fa 0%, #ece9f7 100%);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(142, 148, 251, 0.08);
+    --shadow-soft: 0 4px 24px rgba(79, 84, 200, 0.07);
+    --shadow-hover: 0 10px 28px rgba(79, 84, 200, 0.13);
+    --navbar-height: 60px;
+    --sidebar-width: 210px;
+    --heading-shadow: 0 2px 16px rgba(142, 148, 251, 0.10);
+    --text-muted: #8b95b6;
+    --border-radius: 16px;
+    --border-radius-lg: 22px;
+    --card-border: 1px solid rgba(142, 148, 251, 0.10);
+    --input-border: 1px solid #e0e4f7;
+}
+
+/* 全域設定 */
+* { box-sizing: border-box; }
+body {
+    padding-top: var(--navbar-height);
+    font-family: 'Noto Sans JP', 'Segoe UI', 'Inter', Arial, sans-serif;
+    background: linear-gradient(100deg, #f7f8fa 0%, #ece9f7 100%);
+    background-attachment: fixed;
+    line-height: 1.7;
+    color: #373f5b;
+    letter-spacing: 0.01em;
+    min-height: 100vh;
+}
+
+/* ==========================
+   導覽列
+   ========================== */
+.navbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    width: 100vw;
+    height: var(--navbar-height);
+    z-index: 1050;
+    background: var(--glass-bg);
+    border-bottom: 1px solid #e0e4f7;
+    box-shadow: 0 2px 18px rgba(142, 148, 251, 0.11);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    transition: background 0.3s;
+}
+
+/* ==========================
+   側邊欄
+   ========================== */
+.sidebar {
+    position: fixed;
+    top: var(--navbar-height);
+    left: 0;
+    height: calc(100vh - var(--navbar-height));
+    width: var(--sidebar-width);
+    background: var(--sidebar-gradient);
+    border-right: 1px solid #ece9f7;
+    box-shadow: var(--shadow-soft);
+    z-index: 900;
+    padding: 2rem 0;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.3s, width 0.2s;
+    overflow-y: auto;
+    border-radius: 0 0 var(--border-radius-lg) 0;
+}
+
+/* 自訂捲軸 */
+.sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #e0e4f7;
+    border-radius: 5px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 側邊欄連結 */
+.sidebar .nav-link {
+    color: #535c7f;
+    padding: 0.8rem 2rem;
+    margin: 0.4rem 1.2rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    font-size: 1.02rem;
+    background: none;
+    transition: color 0.18s, box-shadow 0.18s, background 0.18s, transform 0.12s;
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+}
+.sidebar .nav-link:hover, .sidebar .nav-link:focus {
+    background: linear-gradient(100deg, #e7eafc 0%, #ece9f7 100%);
+    color: #4e54c8;
+    box-shadow: 0 1px 8px rgba(142, 148, 251, 0.10);
+    border-left: 3px solid #8f94fb;
+    transform: translateX(2px);
+}
+.sidebar .nav-link.active {
+    background: linear-gradient(100deg, #8f94fb 0%, #4e54c8 100%);
+    color: #fff;
+    box-shadow: 0 0 16px #8f94fb3d;
+    border-left: 4px solid #4e54c8;
+    transform: translateX(2px);
+}
+
+/* 登出按鈕 */
+.nav-link.logout {
+    margin-top: auto;
+    background: rgba(255, 106, 106, 0.07) !important;
+    color: #ff6a6a !important;
+    border-left: 3px solid #ff6a6a !important;
+}
+.nav-link.logout:hover {
+    background: var(--danger-gradient) !important;
+    color: #fff !important;
+    box-shadow: 0 1px 8px #be93c580;
+}
+
+/* ==========================
+   主要內容
+   ========================== */
+main.col-md-10 {
+    margin-left: var(--sidebar-width);
+    padding: 3rem 2.5rem 2rem 2.5rem;
+    min-height: calc(100vh - var(--navbar-height));
+    background: none;
+    transition: margin-left 0.2s, padding 0.2s;
+}
+
+/* ==========================
+   按鈕
+   ========================== */
+.btn {
+    border-radius: 10px;
+    font-weight: 700;
+    padding: 0.7rem 2rem;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: none;
+    position: relative;
+    background: var(--primary-gradient);
+    color: #fff;
+    box-shadow: 0 2px 8px #8f94fb1a;
+    transition: background 0.18s, box-shadow 0.18s, transform 0.09s;
+}
+.btn:hover, .btn:focus {
+    transform: translateY(-2px) scale(1.04);
+    background: linear-gradient(100deg, #8f94fb 0%, #4e54c8 100%);
+    box-shadow: 0 8px 24px #8f94fb2b;
+}
+.btn-success { background: var(--success-gradient); }
+.btn-success:hover { background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%); }
+.btn-danger { background: var(--danger-gradient); }
+.btn-danger:hover { background: linear-gradient(90deg, #be93c5 0%, #ff6a6a 100%); }
+.btn-primary { background: var(--primary-gradient); }
+.btn-primary:hover { background: linear-gradient(100deg, #4e54c8 0%, #8f94fb 100%); }
+
+/* ==========================
+   卡片
+   ========================== */
+.card {
+    margin-bottom: 2rem;
+    border: var(--card-border);
+    border-radius: var(--border-radius-lg);
+    background: var(--glass-bg);
+    box-shadow: var(--shadow-soft);
+    transition: box-shadow 0.18s, transform 0.13s, background 0.13s;
+    overflow: hidden;
+    position: relative;
+    color: #373f5b;
+}
+.card:hover {
+    background: #fff;
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-5px) scale(1.01);
+}
+
+.card-header {
+    background: linear-gradient(100deg, #ece9f7 0%, #f7f8fa 100%);
+    border-bottom: 1px solid #e0e4f7;
+    font-weight: 700;
+    padding: 1.15rem 2rem;
+    color: #4e54c8;
+    letter-spacing: 0.06em;
+    font-size: 1.08rem;
+    box-shadow: none;
+}
+.card-body {
+    padding: 2rem 2rem;
+    font-size: 1.01rem;
+    color: #373f5b;
+}
+
+/* ==========================
+   表格
+   ========================== */
+.table {
+    border-radius: var(--border-radius);
+    border: none;
+    margin-bottom: 2rem;
+    background: #fff;
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+}
+.table thead th {
+    background: linear-gradient(100deg, #ece9f7 0%, #f7f8fa 100%);
+    border: none;
+    font-weight: 700;
+    color: #4e54c8;
+    padding: 1rem 0.9rem;
+    font-size: 0.96rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.table tbody td {
+    border: none;
+    border-bottom: 1px solid #ece9f7;
+    padding: 1rem 0.9rem;
+    vertical-align: middle;
+    color: #373f5b;
+}
+.table tbody tr:hover {
+    background: #f7f8fa;
+    transition: background 0.13s;
+}
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ==========================
+   表單
+   ========================== */
+.form-control {
+    border-radius: 10px;
+    border: var(--input-border);
+    background: #f7f8fa;
+    color: #373f5b;
+    box-shadow: 0 1px 4px #ece9f770;
+    padding: 1rem 1.15rem;
+    font-size: 1rem;
+    transition: border-color 0.13s, box-shadow 0.12s, background 0.10s;
+}
+.form-control::placeholder {
+    color: var(--text-muted);
+}
+.form-control:focus {
+    border-color: #8f94fb;
+    background: #fff;
+    box-shadow: 0 0 0 3px #8f94fb22;
+    color: #373f5b;
+}
+
+/* ==========================
+   警示
+   ========================== */
+.alert {
+    border-radius: var(--border-radius);
+    border: var(--card-border);
+    box-shadow: 0 2px 8px #8f94fb1a;
+    margin-bottom: 2rem;
+    padding: 1.3rem 1.1rem 1.1rem 1.3rem;
+    background: #f8f9fc;
+    color: #4e54c8;
+    position: relative;
+    overflow: hidden;
+}
+.alert::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: var(--primary-gradient);
+    border-radius: 2px;
+    opacity: 0.6;
+}
+
+/* 標題 */
+h1, h2, h3, h4, h5, h6 {
+    color: #4e54c8;
+    font-family: inherit;
+    font-weight: 900;
+    margin-bottom: 1.1rem;
+    text-shadow: var(--heading-shadow);
+    letter-spacing: 0.03em;
+    position: relative;
+}
+h1::after, h2::after {
+    content: '';
+    position: absolute;
+    left: 0; bottom: -8px;
+    width: 60px; height: 3px;
+    background: var(--primary-gradient);
+    border-radius: 2px;
+    opacity: 0.2;
+}
+
+/* 徽章 */
+.badge {
+    font-weight: 700;
+    padding: 0.36rem 1rem;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    background: var(--primary-gradient);
+    color: #fff;
+    box-shadow: 0 1.5px 6px #4e54c84b;
+}
+
+/* 文字工具類 */
+.text-muted {
+    color: var(--text-muted) !important;
+    font-size: 0.97rem;
+}
+
+/* ==========================
+   動畫
+   ========================== */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(14px);}
+    to   { opacity: 1; transform: translateY(0);}
+}
+.fade-in { animation: fadeIn 0.45s cubic-bezier(0.45,0,0.55,1); }
+
+/* ==========================
+   浮動動作按鈕（FAB）
+   ========================== */
+.fab {
+    position: fixed;
+    bottom: 2rem; right: 2rem;
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    background: var(--primary-gradient);
+    box-shadow: 0 2px 10px #8f94fb4a;
+    border: none;
+    color: #fff;
+    font-size: 1.6rem;
+    transition: box-shadow 0.17s, transform 0.11s;
+    z-index: 1200;
+}
+.fab:hover {
+    transform: scale(1.08) rotate(-4deg);
+    box-shadow: 0 8px 24px #8f94fb4a;
+}
+
+@media (max-width: 900px) {
+    :root { --sidebar-width: 68px; }
+    .sidebar { width: var(--sidebar-width); padding: 1rem 0;}
+    .sidebar .nav-link { font-size: 0.92rem; padding: 0.7rem 0.5rem;}
+    main.col-md-10 { margin-left: var(--sidebar-width); padding: 1.2rem 0.7rem; }
+}
+@media (max-width: 600px) {
+    :root { --sidebar-width: 0px; }
+    .sidebar { display: none; }
+    main.col-md-10 { margin-left: 0; padding: 0.8rem 0.2rem;}
+}
+
+@media (prefers-color-scheme: dark) {
+    body { background: linear-gradient(100deg, #23243a 0%, #424466 100%);}
+    .sidebar, .navbar, .card, .table, .alert, .form-control {
+        background: #23243a !important;
+        color: #fff !important;
+    }
+    .sidebar .nav-link, .sidebar .nav-link.active { color: #fff !important; }
+}
+
+.btn {
+    position: relative;
+    overflow: hidden;
+}
+.btn::after {
+    content: '';
+    position: absolute; left: 50%; bottom: 0;
+    width: 0; height: 3px;
+    background: var(--primary-gradient);
+    transition: width 0.25s cubic-bezier(.76,.01,.65,1.02), left 0.25s;
+}
+.btn:hover::after, .btn:focus::after {
+    width: 90%; left: 5%;
+}
+
+.card, .table {
+    transition: box-shadow 0.25s cubic-bezier(.68,-0.55,.27,1.55), transform 0.18s;
+}
+.card:hover, .table:hover {
+    box-shadow: 0 18px 40px #8f94fb33, 0 1.5px 8px #8f94fb14;
+    transform: translateY(-7px) scale(1.012);
+}
+
+.sidebar-section-label {
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    font-weight: 600;
+    padding: 0.5rem 2rem 0.2rem 2rem;
+    letter-spacing: 0.08em;
+    opacity: 0.7;
+}
+
+.fade-in-smooth {
+    opacity: 0;
+    transform: translateY(24px);
+    animation: fadeInSmooth .6s cubic-bezier(.55,.09,.68,.53) forwards;
+}
+@keyframes fadeInSmooth {
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* 表單標籤 */
+.form-label {
+    color: var(--text-muted);
+    font-size: 0.97rem;
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+    display: block;
+}
+
+/* 漸層區段分隔線 */
+.section-divider {
+    height: 2px;
+    width: 100%;
+    background: linear-gradient(90deg, #ece9f7 0%, #8f94fb 100%);
+    border: none;
+    margin: 2rem 0;
+    opacity: 0.15;
+    border-radius: 2px;
+}
+
+/* 輔助說明文字 */
+.subtle-info {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    font-style: italic;
+}
+/* 標頭與頁尾文字設計（依照 logo 形象優雅且現代） */
+
+/* Google Fonts 建議（Noto Serif TC 用於經典漢字＋Montserrat 用於英文） */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Montserrat:wght@500;700&display=swap');
+
+/* 共用顏色 */
+:root {
+  --logo-blue: #4e54c8;
+  --logo-blue-dark: #25255b;
+  --logo-purple: #3c3163;
+}
+
+/* 標頭 logo（navbar-brand） */
+.navbar-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    font-family: 'Noto Serif TC', 'Noto Sans TC', 'Segoe UI', serif;
+    font-weight: 900;
+    font-size: 2.1rem;
+    color: var(--logo-purple);
+    letter-spacing: 0.12em;
+    line-height: 1.08;
+    background: none;
+    text-shadow: 0 2px 12px #8f94fb11;
+    transition: text-shadow 0.18s;
+    padding: 0;
+}
+
+/* 副標語 */
+.navbar-brand-sub {
+    font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+    font-size: 0.97rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: var(--logo-blue);
+    margin-top: 0.1em;
+    margin-left: 2px;
+    line-height: 1.2;
+}
+
+/* 標頭其他文字與按鈕 */
+.navbar-text, .navbar .btn, .navbar .btn:visited {
+    font-family: 'Montserrat', 'Noto Sans TC', Arial, sans-serif;
+    font-weight: 500;
+    font-size: 1.05rem;
+    color: var(--logo-blue-dark);
+    letter-spacing: 0.03em;
+    transition: color 0.15s;
+}
+
+.navbar-text {
+    color: #7b81a4 !important;
+    font-weight: 700;
+}
+
+.navbar .btn-primary {
+    background: linear-gradient(100deg, #4e54c8 0%, #8f94fb 100%);
+    border: none;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    box-shadow: 0 2px 8px #8f94fb22;
+}
+
+.navbar .btn-success {
+    background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+    border: none;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    box-shadow: 0 2px 8px #43cea222;
+}
+
+.navbar .btn-primary:hover {
+    background: linear-gradient(100deg, #8f94fb 0%, #4e54c8 100%);
+    color: #fff;
+}
+.navbar .btn-success:hover {
+    background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%);
+    color: #fff;
+}
+
+/* 頁尾 */
+footer {
+    background: #fff;
+    border-top: 1px solid #ece9f7;
+    box-shadow: 0 -2px 8px #8f94fb13;
+    padding-top: 1.2em;
+    padding-bottom: 1.2em;
+}
+
+footer p {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1.08rem;
+    color: var(--logo-purple);
+    letter-spacing: 0.10em;
+    font-weight: 700;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    text-shadow: 0 1px 10px #b7b3e422;
+    position: relative;
+}
+
+footer p::before {
+    content: '';
+    display: inline-block;
+    width: 1.6em;
+    height: 1.6em;
+    background: url('logo-coral.svg') center/contain no-repeat;
+    margin-right: 0.45em;
+    opacity: 0.14;
+    vertical-align: middle;
+}
+
+
+.footer-tagline {
+    font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+    font-size: 0.98rem;
+    color: #7b81a4;
+    letter-spacing: 0.04em;
+    margin-top: 0.2em;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .navbar-brand {
+        font-size: 1.22rem;
+    }
+    .navbar-brand-sub {
+        font-size: 0.85rem;
+    }
+    .navbar-text {
+        font-size: 0.93rem;
+    }
+    footer p {
+        font-size: 0.96rem;
+    }
+}
+
+
+.navbar-brand, footer p {
+    transition: text-shadow 0.23s, color 0.18s;
+}
+.navbar-brand:hover,
+footer p:hover {
+    text-shadow: 0 4px 16px #4e54c844;
+    color: #4e54c8;
+}
+
+.navbar-custom-bg {
+    position: relative;
+    background: linear-gradient(120deg, #edeaff 60%, #f8f9fc 100%);
+    overflow: hidden;
+}
+
+.navbar-custom-bg .navbar-bg-coral {
+    position: absolute;
+    left: 50%;
+    top: 53%;
+    transform: translate(-50%, -50%) scale(1.18);
+    width: 420px;
+    height: 220px;
+    background: url('../img/main-logo.png') center/contain no-repeat;
+    opacity: 0.10;
+    z-index: 0;
+    filter: blur(1.2px);
+    pointer-events: none;
+}
+
+.navbar-custom-bg .container,
+.navbar-custom-bg .container-fluid {
+    position: relative;
+    z-index: 2;
+}
+
+.navbar-custom-bg .navbar-brand {
+    font-family: 'Noto Serif TC', 'Noto Sans TC', serif;
+    font-weight: 900;
+    font-size: 2.1rem;
+    color: #3c3163;
+    letter-spacing: 0.12em;
+    line-height: 1.08;
+    padding: 0;
+}
+
+@media (max-width: 600px) {
+    .navbar-custom-bg .navbar-brand {
+        font-size: 1.15rem;
+    }
+    .navbar-custom-bg .navbar-bg-coral {
+        width: 180px;
+        height: 90px;
+    }
+}
