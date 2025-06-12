@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>集資平台</title>
+    <title>競賽組隊系統</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         <div class="navbar-bg-coral"></div>
         <div class="container">
             <a class="navbar-brand" href="#">
-                集資平台
+                競賽組隊系統
                 <span class="navbar-brand-slogan">Your Idea, Our Support, Success Ahead</span>
             </a>
             <div class="ms-auto">
@@ -266,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     </div>
 
     <footer class="bg-light text-center py-3">
-        <p class="footer-title">版權 © 2025 集資平台</p>
+        <p class="footer-title">版權 © 2025 競賽組隊系統</p>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

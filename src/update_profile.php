@@ -25,6 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("DELETE FROM Skill WHERE SID = ?");
     $stmt->execute([$_SESSION['user_id']]);
 
+    $stmt = $pdo->prepare("DELETE FROM Award WHERE SID = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+
+    $stmt = $pdo->prepare("DELETE FROM Portfolio WHERE SID = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+
     foreach (explode(',', $skills) as $skill) {
         $skill = trim($skill);
         if ($skill) {
@@ -36,36 +42,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach (explode(',', $awards) as $award) {
         $award = trim($award);
         if ($award) {
-            $stmt = $pdo->prepare("INSERT INTO Skill (SID, Skill) VALUES (?, ?)");
-            $stmt->execute([$_SESSION['user_id'], "Award: $award"]);
+            $stmt = $pdo->prepare("INSERT INTO Award (SID, Award_Title) VALUES (?, ?)");
+            $stmt->execute([$_SESSION['user_id'], "$award"]);
         }
     }
 
     foreach (explode(',', $portfolio) as $item) {
         $item = trim($item);
         if ($item) {
-            $stmt = $pdo->prepare("INSERT INTO Skill (SID, Skill) VALUES (?, ?)");
-            $stmt->execute([$_SESSION['user_id'], "Portfolio: $item"]);
+            $stmt = $pdo->prepare("INSERT INTO Portfolio (SID, Title) VALUES (?, ?)");
+            $stmt->execute([$_SESSION['user_id'], "$item"]);
         }
     }
     $success = "個人檔案更新成功";
 }
 
+$user_id = $_SESSION['user_id'];
+// 取得目前所有隊伍（我有參加且未離開）
+$stmt = $pdo->prepare("SELECT t.TID, t.Team_Name, tmh.Join_Date
+                       FROM TeamMembershipHistory tmh
+                       JOIN Team t ON tmh.Team = t.TID
+                       WHERE tmh.Member = ? AND tmh.Leave_Date IS NULL");
+$stmt->execute([$user_id]);
+$my_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// 取得目前所有隊伍（只要隊名和TID，for sidebar）
+$sidebar_teams = $my_teams;
+
 $stmt = $pdo->prepare("SELECT Name FROM User WHERE Account = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$stmt = $pdo->prepare("SELECT Skill FROM Skill WHERE SID = ? AND Skill NOT LIKE 'Award:%' AND Skill NOT LIKE 'Portfolio:%'");
+$stmt = $pdo->prepare("SELECT Skill FROM Skill WHERE SID = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $skills = implode(', ', $stmt->fetchAll(PDO::FETCH_COLUMN));
 
-$stmt = $pdo->prepare("SELECT Skill FROM Skill WHERE SID = ? AND Skill LIKE 'Award:%'");
+$stmt = $pdo->prepare("SELECT Award_Title FROM Award WHERE SID = ?");
 $stmt->execute([$_SESSION['user_id']]);
-$awards = implode(', ', array_map(function($s) { return substr($s['Skill'], 6); }, $stmt->fetchAll(PDO::FETCH_ASSOC)));
+$awards = implode(', ', $stmt->fetchAll(PDO::FETCH_COLUMN));
 
-$stmt = $pdo->prepare("SELECT Skill FROM Skill WHERE SID = ? AND Skill LIKE 'Portfolio:%'");
+$stmt = $pdo->prepare("SELECT Title FROM Portfolio WHERE SID = ?");
 $stmt->execute([$_SESSION['user_id']]);
-$portfolio = implode(', ', array_map(function($s) { return substr($s['Skill'], 10); }, $stmt->fetchAll(PDO::FETCH_ASSOC)));
+$portfolio = implode(', ', $stmt->fetchAll(PDO::FETCH_COLUMN));
 ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -73,7 +91,12 @@ $portfolio = implode(', ', array_map(function($s) { return substr($s['Skill'], 1
     <meta charset="UTF-8">
     <title>更新個人檔案</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <style>
+        .sidebar-sticky { min-height: 100vh; }
+        .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }
+        .sidebar .nav-link { cursor: pointer; }
+        .sidebar .team-list { display: block; padding-left: 1.5em; }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-light bg-light">
@@ -83,16 +106,29 @@ $portfolio = implode(', ', array_map(function($s) { return substr($s['Skill'], 1
     </nav>
     <div class="container-fluid">
         <div class="row">
+            <!-- Sidebar -->
             <nav class="col-md-2 bg-light sidebar">
                 <div class="sidebar-sticky d-flex flex-column" style="height: 100%;">
                     <ul class="nav flex-column flex-grow-1">
                         <li class="nav-item"><a class="nav-link" href="index.php">首頁</a></li>
                         <li class="nav-item"><a class="nav-link active" href="update_profile.php">個人檔案</a></li>
-                        <li class="nav-item"><a class="nav-link" href="post_recruitment.php">隊伍徵求</a></li>
-                        <li class="nav-item"><a class="nav-link" href="apply_team.php">申請隊伍</a></li>
-                        <li class="nav-item"><a class="nav-link" href="manage_invitations.php">管理邀請</a></li>
-                        <li class="nav-item"><a class="nav-link" href="team_history.php">隊伍歷史</a></li>
-                        <li class="nav-item"><a class="nav-link" href="team_ratings.php">隊友評價</a></li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="my_team.php">我的隊伍</a>
+                            <ul class="team-list" id="teamList">
+                                <?php foreach ($sidebar_teams as $team): ?>
+                                    <li>
+                                        <a class="nav-link<?php if ($TID == $team['TID']) echo ' active'; ?>" href="my_team.php?TID=<?php echo $team['TID']; ?>">
+                                            <?php echo htmlspecialchars($team['Team_Name']); ?>
+                                        </a>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </li>
+                        <li class="nav-item"><a class="nav-link" href="create_team.php">創建隊伍</a></li>
+                        <li class="nav-item"><a class="nav-link" href="apply_team.php">申請入隊</a></li>
+                        <li class="nav-item"><a class="nav-link" href="manage_invitations.php">管理訊息</a></li>
+                        <li class="nav-item"><a class="nav-link" href="team_history.php">組隊紀錄</a></li>
+                        <li class="nav-item"><a class="nav-link" href="team_ratings.php">查看評價</a></li>
                         <li class="nav-item"><a class="nav-link logout" href="?logout=1">登出</a></li>
                     </ul>
                 </div>
