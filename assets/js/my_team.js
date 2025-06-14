@@ -29,7 +29,19 @@ document.addEventListener('click', function(e) {
                 } else {
                     html += `<table class="table table-bordered"><thead><tr><th>評論者</th><th>評分</th><th>評論</th></tr></thead><tbody>`;
                     data.forEach(r => {
-                        html += `<tr><td>${r.ReviewerName || r.Reviewer}</td><td>${r.Rating}</td><td>${r.Comment}</td></tr>`;
+                        html += `<tr><td>${r.ReviewerName || r.Reviewer}</td><td>`;//<td>${r.Rating}</td>
+                        //以星數顯示評分
+                        var starating = "";
+                        for (var i = 1; i <= 5; i++) {
+                            if (i <= r.Rating) {
+                                starating += '<span style="color: gold;">★</span>';
+                            } else {
+                                starating += '<span style="color: gray;">☆</span>';
+                            }
+                        }
+                        html += starating;
+
+                        html += `</td><td>${r.Comment}</td></tr>`;
                     });
                     html += '</tbody></table>';
                 }
@@ -37,6 +49,7 @@ document.addEventListener('click', function(e) {
             });
     } else if (type === 'edit-rating') {
         const uid = btn.getAttribute('data-uid');
+        const tid = btn.getAttribute('data-team-id'); //獲取tid標籤
         fetch('my_team.php?ajax=edit-rating&uid=' + encodeURIComponent(uid))
             .then(res => res.json())
             .then(data => {
@@ -50,11 +63,12 @@ document.addEventListener('click', function(e) {
                             <label>評論：</label>
                             <textarea name="comment" class="form-control">${data.Comment || ''}</textarea>
                         </div>
+                        <input type="hidden" name="Team" value="${tid}"> 
                         <input type="hidden" name="uid" value="${uid}">
                         <button type="submit" class="btn btn-primary" id="submitRatingBtn" disabled>提交</button>
                         <button type="button" class="btn btn-danger" id="deleteRatingBtn">刪除</button>
                         <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>
-                    </form>`;
+                    </form>`;//新增tid輸入值
                 showModal(html);
 
                 // 新增輸入檢查，兩欄都要有資料才能啟用提交

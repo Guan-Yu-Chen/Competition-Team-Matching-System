@@ -160,7 +160,7 @@ if (isset($_GET['ajax'])) {
     // 新增/編輯評論
     if ($_GET['ajax'] === 'edit-rating' && isset($_GET['uid'])) {
         $uid = $_GET['uid'];
-        $stmt = $pdo->prepare("SELECT Rating, Comment FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ?");
+        $stmt = $pdo->prepare("SELECT Rating, Comment, Team FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ?");
         $stmt->execute([$user_id, $uid]);
         $rating = $stmt->fetch(PDO::FETCH_ASSOC);
         echo json_encode($rating ?: []);
@@ -171,6 +171,7 @@ if (isset($_GET['ajax'])) {
         $uid = $_POST['uid'];
         $rating = $_POST['rating'];
         $comment = $_POST['comment'];
+        $TID = $_POST['Team'];
         // 檢查是否已存在
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ?");
         $stmt->execute([$user_id, $uid]);
@@ -494,7 +495,7 @@ if (isset($_GET['ajax'])) {
                                             <td>
                                                 <button type="button" class="btn btn-info btn-sm open-modal" data-modal-type="profile" data-uid="<?php echo $member['Account']; ?>">查看個人資料</button>
                                                 <button type="button" class="btn btn-secondary btn-sm open-modal" data-modal-type="ratings" data-uid="<?php echo $member['Account']; ?>">查看評論</button>
-                                                <button type="button" class="btn btn-success btn-sm open-modal" data-modal-type="edit-rating" data-uid="<?php echo $member['Account']; ?>">新增/編輯評論</button>
+                                                <button type="button" class="btn btn-success btn-sm open-modal" data-modal-type="edit-rating" data-uid="<?php echo $member['Account']; ?>" data-team-id="<?php echo $TID; ?>">新增/編輯評論</button>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
