@@ -13,23 +13,43 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $tid = $_POST['tid'];
-    $applicant_id = $_POST['applicant_id'];
-    $action = $_POST['action'];
+$user_id = $_SESSION['user_id'];
+$success = '';
+$error = '';
 
-    if ($action === 'accept') {
-        $stmt = $pdo->prepare("UPDATE TeamMembershipHistory SET Join_Date = CURDATE() WHERE Team = ? AND Member = ? AND Join_Date IS NULL");
-        $stmt->execute([$tid, $applicant_id]);
-        $success = "已接受申請";
-    } else {
-        $stmt = $pdo->prepare("DELETE FROM TeamMembershipHistory WHERE Team = ? AND Member = ? AND Join_Date IS NULL");
-        $stmt->execute([$tid, $applicant_id]);
-        $success = "已拒絕申請";
+// 處理邀請接受/拒絕
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action_type'])) {
+        $action_type = $_POST['action_type'];
+        if ($action_type === 'accept_invite') {
+            // 接受邀請
+            $tid = $_POST['tid'];
+            $invitee_id = $_SESSION['user_id'];
+            // 1. invitationlist status 改 accepted
+            $stmt = $pdo->prepare("UPDATE invitationlist SET status = 'accepted' WHERE TeamID = ? AND InviteeID = ?");
+            $stmt->execute([$tid, $invitee_id]);
+            // 2. 新增到 TeamMembershipHistory
+            $stmt = $pdo->prepare("INSERT INTO TeamMembershipHistory (Team, Member, Join_Date) VALUES (?, ?, CURDATE())");
+            $stmt->execute([$tid, $invitee_id]);
+            $success = "已接受邀請";
+        } elseif ($action_type === 'reject_invite') {
+            // 拒絕邀請
+            $tid = $_POST['tid'];
+            $invitee_id = $_SESSION['user_id'];
+            $stmt = $pdo->prepare("UPDATE invitationlist SET status = 'rejected' WHERE TeamID = ? AND InviteeID = ?");
+            $stmt->execute([$tid, $invitee_id]);
+            $success = "已拒絕邀請";
+        } elseif ($action_type === 'withdraw_application' || $action_type === 'delete_application') {
+            // 撤回申請或刪除訊息
+            $tid = $_POST['tid'];
+            $applicant_id = $_SESSION['user_id'];
+            $stmt = $pdo->prepare("DELETE FROM applicationlist WHERE TeamID = ? AND ApplicantID = ?");
+            $stmt->execute([$tid, $applicant_id]);
+            $success = "已刪除申請";
+        }
     }
 }
 
-$user_id = $_SESSION['user_id'];
 // 取得目前所有隊伍（我有參加且未離開）
 $stmt = $pdo->prepare("SELECT t.TID, t.Team_Name, tmh.Join_Date
                        FROM TeamMembershipHistory tmh
@@ -41,21 +61,21 @@ $my_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // 取得目前所有隊伍（只要隊名和TID，for sidebar）
 $sidebar_teams = $my_teams;
 
-// 查詢收到的邀請（含邀請人名字）
-$stmt = $pdo->prepare("SELECT il.TeamID AS TID, t.Team_Name, il.inviterID, u.Name AS inviter_name, il.inviteeID
+// 查詢收到的邀請（只顯示自己且 status = pending）
+$stmt = $pdo->prepare("SELECT il.TeamID AS TID, t.Team_Name, il.InviterID, u.Name AS inviter_name, il.InviteeID
                        FROM invitationlist il
                        JOIN Team t ON il.TeamID = t.TID
-                       JOIN User u ON il.inviterID = u.Account
-                       WHERE il.inviteeID = ?");
-$stmt->execute([$_SESSION['user_id']]);
+                       JOIN User u ON il.InviterID = u.Account
+                       WHERE il.InviteeID = ? AND il.status = 'pending'");
+$stmt->execute([$user_id]);
 $invitations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 查詢我的申請
-$stmt = $pdo->prepare("SELECT al.TeamID AS TID, t.Team_Name, t.Leader
+$stmt = $pdo->prepare("SELECT al.TeamID AS TID, t.Team_Name, t.Leader, al.status
                        FROM applicationlist al
                        JOIN Team t ON al.TeamID = t.TID
                        WHERE al.ApplicantID = ?");
-$stmt->execute([$_SESSION['user_id']]);
+$stmt->execute([$user_id]);
 $applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 取得所有隊伍資訊（for modal）
@@ -71,16 +91,10 @@ foreach ($invitations as $inv) {
     $stmt->execute([$inv['TID']]);
     $skills = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    // 目前隊伍成員（未離開）
-    $stmt = $pdo->prepare("SELECT u.Name FROM TeamMembershipHistory m JOIN User u ON m.Member = u.Account WHERE m.Team = ? AND m.Leave_Date IS NULL");
-    $stmt->execute([$inv['TID']]);
-    $members = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
     $team_info[$inv['TID']] = [
         'team_name' => $inv['Team_Name'],
         'leader' => $leader_name,
-        'skills' => $skills,
-        'members' => $members
+        'skills' => $skills
     ];
 }
 foreach ($applications as $app) {
@@ -97,8 +111,7 @@ foreach ($applications as $app) {
     $team_info[$app['TID']] = [
         'team_name' => $app['Team_Name'],
         'leader' => $leader_name,
-        'skills' => $skills,
-        'members' => [] // 不顯示成員
+        'skills' => $skills
     ];
 }
 ?>
@@ -142,6 +155,11 @@ foreach ($applications as $app) {
             cursor: pointer;
         }
         .modal-box h5 { margin-bottom: 1.2rem; }
+        .d-flex.gap-2 > * { margin-right: 0.5rem; }
+        .d-flex.gap-2 > *:last-child { margin-right: 0; }
+        .status-accepted { color: #198754; font-weight: bold; }
+        .status-rejected { color: #dc3545; font-weight: bold; }
+        .status-pending { color: #ffc107; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -163,7 +181,7 @@ foreach ($applications as $app) {
                             <ul class="team-list" id="teamList">
                                 <?php foreach ($sidebar_teams as $team): ?>
                                     <li>
-                                        <a class="nav-link<?php if ($TID == $team['TID']) echo ' active'; ?>" href="my_team.php?TID=<?php echo $team['TID']; ?>">
+                                        <a class="nav-link" href="my_team.php?TID=<?php echo $team['TID']; ?>">
                                             <?php echo htmlspecialchars($team['Team_Name']); ?>
                                         </a>
                                     </li>
@@ -181,7 +199,9 @@ foreach ($applications as $app) {
             </nav>
             <main class="col-md-10 px-4">
                 <h2>管理組隊邀請與申請</h2>
-                <?php if (isset($success)) echo "<div class='alert alert-success'>$success</div>"; ?>
+                <?php if ($success) echo "<div class='alert alert-success'>$success</div>"; ?>
+                <?php if ($error) echo "<div class='alert alert-danger'>$error</div>"; ?>
+
                 <h3>收到的邀請</h3>
                 <table class="table table-striped">
                     <thead>
@@ -197,28 +217,28 @@ foreach ($applications as $app) {
                                 <td><?php echo htmlspecialchars($inv['Team_Name']); ?></td>
                                 <td><?php echo htmlspecialchars($inv['inviter_name']); ?></td>
                                 <td>
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="tid" value="<?php echo htmlspecialchars($inv['TID']); ?>">
-                                        <input type="hidden" name="applicant_id" value="<?php echo htmlspecialchars($inv['inviteeID']); ?>">
-                                        <input type="hidden" name="action" value="accept">
-                                        <button type="submit" class="btn btn-success btn-sm">接受</button>
-                                    </form>
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="tid" value="<?php echo htmlspecialchars($inv['TID']); ?>">
-                                        <input type="hidden" name="applicant_id" value="<?php echo htmlspecialchars($inv['inviteeID']); ?>">
-                                        <input type="hidden" name="action" value="reject">
-                                        <button type="submit" class="btn btn-danger btn-sm">拒絕</button>
-                                    </form>
-                                    <button type="button"
-                                        class="btn btn-primary btn-sm view-team-btn"
-                                        data-tid="<?php echo htmlspecialchars($inv['TID']); ?>"
-                                        data-type="invite"
-                                    >查看隊伍資訊</button>
+                                    <div class="d-flex gap-2">
+                                        <button type="button"
+                                            class="btn btn-success btn-sm accept-invite-btn"
+                                            data-tid="<?php echo htmlspecialchars($inv['TID']); ?>"
+                                            data-teamname="<?php echo htmlspecialchars($inv['Team_Name']); ?>"
+                                        >接受</button>
+                                        <button type="button"
+                                            class="btn btn-danger btn-sm reject-invite-btn"
+                                            data-tid="<?php echo htmlspecialchars($inv['TID']); ?>"
+                                            data-teamname="<?php echo htmlspecialchars($inv['Team_Name']); ?>"
+                                        >拒絕</button>
+                                        <button type="button"
+                                            class="btn btn-primary btn-sm view-team-btn"
+                                            data-tid="<?php echo htmlspecialchars($inv['TID']); ?>"
+                                        >查看隊伍</button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+
                 <h3>我的申請</h3>
                 <table class="table table-striped">
                     <thead>
@@ -232,13 +252,38 @@ foreach ($applications as $app) {
                         <?php foreach ($applications as $app): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($app['Team_Name']); ?></td>
-                                <td>待審核</td>
                                 <td>
-                                    <button type="button"
-                                        class="btn btn-primary btn-sm view-team-btn"
-                                        data-tid="<?php echo htmlspecialchars($app['TID']); ?>"
-                                        data-type="apply"
-                                    >查看隊伍資訊</button>
+                                    <?php
+                                        if ($app['status'] === 'pending') {
+                                            echo '<span class="status-pending">待審核</span>';
+                                        } elseif ($app['status'] === 'accepted') {
+                                            echo '<span class="status-accepted">已接受申請</span>';
+                                        } elseif ($app['status'] === 'rejected') {
+                                            echo '<span class="status-rejected">已拒絕申請</span>';
+                                        }
+                                    ?>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <button type="button"
+                                            class="btn btn-primary btn-sm view-team-btn"
+                                            data-tid="<?php echo htmlspecialchars($app['TID']); ?>"
+                                        >查看隊伍</button>
+                                        <?php if ($app['status'] === 'pending'): ?>
+                                            <button type="button"
+                                                class="btn btn-warning btn-sm withdraw-app-btn"
+                                                data-tid="<?php echo htmlspecialchars($app['TID']); ?>"
+                                                data-teamname="<?php echo htmlspecialchars($app['Team_Name']); ?>"
+                                            >撤回申請</button>
+                                        <?php else: ?>
+                                            <button type="button"
+                                                class="btn btn-danger btn-sm delete-app-btn"
+                                                data-tid="<?php echo htmlspecialchars($app['TID']); ?>"
+                                                data-teamname="<?php echo htmlspecialchars($app['Team_Name']); ?>"
+                                                data-status="<?php echo htmlspecialchars($app['status']); ?>"
+                                            >刪除訊息</button>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -256,25 +301,31 @@ foreach ($applications as $app) {
             <div id="modalContent"></div>
         </div>
     </div>
+    <!-- 動作確認 Modal -->
+    <div class="modal-bg" id="actionModal">
+        <div class="modal-box">
+            <span class="modal-close" id="actionModalClose">&times;</span>
+            <div id="actionModalContent"></div>
+            <form id="actionForm" method="POST" style="display:none;">
+                <input type="hidden" name="action_type" id="action_type">
+                <input type="hidden" name="tid" id="action_tid">
+            </form>
+            <div class="mt-3 d-flex justify-content-end gap-2" id="actionModalBtns"></div>
+        </div>
+    </div>
 
     <script>
-        // 將 PHP 陣列轉成 JS 物件
+        // 隊伍資訊
         const teamInfo = <?php echo json_encode($team_info, JSON_UNESCAPED_UNICODE); ?>;
+
+        // 查看隊伍
         document.querySelectorAll('.view-team-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const tid = btn.getAttribute('data-tid');
-                const type = btn.getAttribute('data-type');
                 const info = teamInfo[tid];
                 let html = `<h5>隊伍名稱：${info.team_name}</h5>`;
                 html += `<div><strong>隊長：</strong>${info.leader}</div>`;
                 html += `<div class="mt-2"><strong>隊伍要求技能：</strong> ${info.skills.length ? info.skills.join(', ') : '無'}</div>`;
-                if (type === 'invite') {
-                    html += `<div class="mt-2"><strong>目前隊伍成員：</strong><ul>`;
-                    info.members.forEach(m => {
-                        html += `<li>${m}</li>`;
-                    });
-                    html += `</ul></div>`;
-                }
                 document.getElementById('modalContent').innerHTML = html;
                 document.getElementById('teamModal').classList.add('active');
             });
@@ -283,6 +334,105 @@ foreach ($applications as $app) {
             document.getElementById('teamModal').classList.remove('active');
         };
         document.getElementById('teamModal').onclick = function(e) {
+            if (e.target === this) this.classList.remove('active');
+        };
+
+        // 接受邀請
+        document.querySelectorAll('.accept-invite-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const tid = btn.getAttribute('data-tid');
+                const teamName = btn.getAttribute('data-teamname');
+                document.getElementById('actionModalContent').innerHTML =
+                    `是否接受 <strong>${teamName}</strong> 的邀請？`;
+                document.getElementById('action_type').value = 'accept_invite';
+                document.getElementById('action_tid').value = tid;
+                document.getElementById('actionModalBtns').innerHTML =
+                    `<button type="button" class="btn btn-secondary btn-sm" id="actionCancelBtn">取消</button>
+                     <button type="button" class="btn btn-success btn-sm" id="actionConfirmBtn">接受</button>`;
+                document.getElementById('actionModal').classList.add('active');
+                document.getElementById('actionConfirmBtn').onclick = function() {
+                    document.getElementById('actionForm').submit();
+                };
+                document.getElementById('actionCancelBtn').onclick = function() {
+                    document.getElementById('actionModal').classList.remove('active');
+                };
+            });
+        });
+
+        // 拒絕邀請
+        document.querySelectorAll('.reject-invite-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const tid = btn.getAttribute('data-tid');
+                const teamName = btn.getAttribute('data-teamname');
+                document.getElementById('actionModalContent').innerHTML =
+                    `是否拒絕 <strong>${teamName}</strong> 的邀請？`;
+                document.getElementById('action_type').value = 'reject_invite';
+                document.getElementById('action_tid').value = tid;
+                document.getElementById('actionModalBtns').innerHTML =
+                    `<button type="button" class="btn btn-secondary btn-sm" id="actionCancelBtn">取消</button>
+                     <button type="button" class="btn btn-danger btn-sm" id="actionConfirmBtn">拒絕</button>`;
+                document.getElementById('actionModal').classList.add('active');
+                document.getElementById('actionConfirmBtn').onclick = function() {
+                    document.getElementById('actionForm').submit();
+                };
+                document.getElementById('actionCancelBtn').onclick = function() {
+                    document.getElementById('actionModal').classList.remove('active');
+                };
+            });
+        });
+
+        // 撤回申請
+        document.querySelectorAll('.withdraw-app-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const tid = btn.getAttribute('data-tid');
+                const teamName = btn.getAttribute('data-teamname');
+                document.getElementById('actionModalContent').innerHTML =
+                    `是否撤回申請 <strong>${teamName}</strong>？`;
+                document.getElementById('action_type').value = 'withdraw_application';
+                document.getElementById('action_tid').value = tid;
+                document.getElementById('actionModalBtns').innerHTML =
+                    `<button type="button" class="btn btn-secondary btn-sm" id="actionCancelBtn">取消</button>
+                     <button type="button" class="btn btn-warning btn-sm" id="actionConfirmBtn">撤回申請</button>`;
+                document.getElementById('actionModal').classList.add('active');
+                document.getElementById('actionConfirmBtn').onclick = function() {
+                    document.getElementById('actionForm').submit();
+                };
+                document.getElementById('actionCancelBtn').onclick = function() {
+                    document.getElementById('actionModal').classList.remove('active');
+                };
+            });
+        });
+
+        // 刪除訊息
+        document.querySelectorAll('.delete-app-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const tid = btn.getAttribute('data-tid');
+                const teamName = btn.getAttribute('data-teamname');
+                const status = btn.getAttribute('data-status');
+                let statusText = '';
+                if (status === 'accepted') statusText = '<span class="status-accepted">已接受申請</span>';
+                else if (status === 'rejected') statusText = '<span class="status-rejected">已拒絕申請</span>';
+                document.getElementById('actionModalContent').innerHTML =
+                    `是否刪除 <strong>${teamName}</strong> 的申請訊息？<br>狀態：${statusText}`;
+                document.getElementById('action_type').value = 'delete_application';
+                document.getElementById('action_tid').value = tid;
+                document.getElementById('actionModalBtns').innerHTML =
+                    `<button type="button" class="btn btn-secondary btn-sm" id="actionCancelBtn">取消</button>
+                     <button type="button" class="btn btn-danger btn-sm" id="actionConfirmBtn">刪除</button>`;
+                document.getElementById('actionModal').classList.add('active');
+                document.getElementById('actionConfirmBtn').onclick = function() {
+                    document.getElementById('actionForm').submit();
+                };
+                document.getElementById('actionCancelBtn').onclick = function() {
+                    document.getElementById('actionModal').classList.remove('active');
+                };
+            });
+        });
+
+        document.getElementById('actionModalClose').onclick = function() {
+            document.getElementById('actionModal').classList.remove('active');
+        };
+        document.getElementById('actionModal').onclick = function(e) {
             if (e.target === this) this.classList.remove('active');
         };
     </script>

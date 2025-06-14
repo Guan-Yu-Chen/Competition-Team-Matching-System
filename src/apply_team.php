@@ -13,40 +13,42 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $tid = $_POST['tid'];
-    $applicant = $_SESSION['user_id'];
-    $applicationID = $tid . $applicant;
-
-    // 先檢查是否已經申請過
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Applicationlist WHERE TeamID = ? AND ApplicantID = ?");
-    $stmt->execute([$tid, $applicant]);
-    if ($stmt->fetchColumn() > 0) {
-        $success = "<span class='text-danger'>您已經申請過這個隊伍！</span>";
-    } else {
-        $stmt = $pdo->prepare("INSERT INTO Applicationlist (ApplicationID, TeamID, ApplicantID) VALUES (?, ?, ?)");
-        $stmt->execute([$applicationID, $tid, $applicant]);
-        $success = "申請已提交";
-    }
-}
-
-$stmt = $pdo->prepare("SELECT tr.Team AS TID, t.Team_Name, t.Leader
-                       FROM TeamRecruitment tr
-                       JOIN Team t ON tr.Team = t.TID");
-$stmt->execute();
-$recruitments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 $user_id = $_SESSION['user_id'];
-// 取得目前所有隊伍（我有參加且未離開）
-$stmt = $pdo->prepare("SELECT t.TID, t.Team_Name, tmh.Join_Date
-                       FROM TeamMembershipHistory tmh
-                       JOIN Team t ON tmh.Team = t.TID
-                       WHERE tmh.Member = ? AND tmh.Leave_Date IS NULL");
-$stmt->execute([$user_id]);
-$my_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 取得目前所有隊伍（只要隊名和TID，for sidebar）
-$sidebar_teams = $my_teams;
+// 取得目前所有隊伍（我有參加且未離開）
+$stmt = $pdo->prepare("SELECT Team FROM TeamMembershipHistory WHERE Member = ? AND Leave_Date IS NULL");
+$stmt->execute([$user_id]);
+$my_team_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+// 取得所有正在招募的隊伍，排除自己目前已在的隊伍
+// 取得目前所有隊伍（我有參加且未離開）
+$stmt = $pdo->prepare("SELECT Team FROM TeamMembershipHistory WHERE Member = ? AND Leave_Date IS NULL");
+$stmt->execute([$user_id]);
+$my_team_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+// 取得已申請過的隊伍
+$stmt = $pdo->prepare("SELECT TeamID FROM Applicationlist WHERE ApplicantID = ?");
+$stmt->execute([$user_id]);
+$applied_team_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+// 合併排除條件
+$exclude_ids = array_merge($my_team_ids, $applied_team_ids);
+
+if (count($exclude_ids) > 0) {
+    $in = str_repeat('?,', count($exclude_ids) - 1) . '?';
+    $sql = "SELECT tr.Team AS TID, t.Team_Name, t.Leader
+            FROM TeamRecruitment tr
+            JOIN Team t ON tr.Team = t.TID
+            WHERE tr.Team NOT IN ($in)";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($exclude_ids);
+} else {
+    $stmt = $pdo->prepare("SELECT tr.Team AS TID, t.Team_Name, t.Leader
+                           FROM TeamRecruitment tr
+                           JOIN Team t ON tr.Team = t.TID");
+    $stmt->execute();
+}
+$recruitments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 取得所有隊長名稱與技能
 $team_info = [];
@@ -67,15 +69,41 @@ foreach ($recruitments as $rec) {
     ];
 }
 
+// 取得目前所有隊伍（只要隊名和TID，for sidebar）
+$stmt = $pdo->prepare("SELECT t.TID, t.Team_Name, tmh.Join_Date
+                       FROM TeamMembershipHistory tmh
+                       JOIN Team t ON tmh.Team = t.TID
+                       WHERE tmh.Member = ? AND tmh.Leave_Date IS NULL");
+$stmt->execute([$user_id]);
+$sidebar_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 // 取得目前選中的隊伍ID
 $TID = $_GET['TID'] ?? null;
 $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
+
+// 申請入隊處理
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['apply_tid'])) {
+    $tid = $_POST['apply_tid'];
+    $applicant = $_SESSION['user_id'];
+
+    // 檢查是否已經申請過
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Applicationlist WHERE TeamID = ? AND ApplicantID = ?");
+    $stmt->execute([$tid, $applicant]);
+    if ($stmt->fetchColumn() > 0) {
+        $success = "<span class='text-danger'>您已經申請過這個隊伍！</span>";
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO Applicationlist (TeamID, ApplicantID, status) VALUES (?, ?, 'pending')");
+        $stmt->execute([$tid, $applicant]);
+        header("Location: manage_invitations.php");
+        exit;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>申請加入隊伍</title>
+    <title>申請入隊</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
     <style>
@@ -111,6 +139,8 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
             cursor: pointer;
         }
         .modal-box h5 { margin-bottom: 1.2rem; }
+        .d-flex.gap-2 > * { margin-right: 0.5rem; }
+        .d-flex.gap-2 > *:last-child { margin-right: 0; }
     </style>
 </head>
 <body>
@@ -149,7 +179,7 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
                 </div>
             </nav>
             <main class="col-md-10 px-4">
-                <h2>申請加入隊伍</h2>
+                <h2>招募中的隊伍</h2>
                 <?php if (isset($success)) echo "<div class='alert alert-success'>$success</div>"; ?>
                 <table class="table table-striped">
                     <thead>
@@ -163,16 +193,19 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
                             <tr>
                                 <td><?php echo htmlspecialchars($rec['Team_Name']); ?></td>
                                 <td>
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="tid" value="<?php echo htmlspecialchars($rec['TID']); ?>">
-                                        <button type="submit" class="btn btn-success btn-sm">申請</button>
-                                    </form>
-                                    <button type="button"
-                                        class="btn btn-primary btn-sm view-team-btn"
-                                        data-leader="<?php echo htmlspecialchars($team_info[$rec['TID']]['leader']); ?>"
-                                        data-skills="<?php echo htmlspecialchars(implode(', ', $team_info[$rec['TID']]['skills'])); ?>"
-                                        data-teamname="<?php echo htmlspecialchars($rec['Team_Name']); ?>"
-                                    >查看</button>
+                                    <div class="d-flex gap-2">
+                                        <button type="button"
+                                            class="btn btn-success btn-sm apply-btn"
+                                            data-tid="<?php echo htmlspecialchars($rec['TID']); ?>"
+                                            data-teamname="<?php echo htmlspecialchars($rec['Team_Name']); ?>"
+                                        >申請入隊</button>
+                                        <button type="button"
+                                            class="btn btn-primary btn-sm view-team-btn"
+                                            data-leader="<?php echo htmlspecialchars($team_info[$rec['TID']]['leader']); ?>"
+                                            data-skills="<?php echo htmlspecialchars(implode(', ', $team_info[$rec['TID']]['skills'])); ?>"
+                                            data-teamname="<?php echo htmlspecialchars($rec['Team_Name']); ?>"
+                                        >查看隊伍</button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -183,7 +216,21 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
         </div>
     </div>
 
-    <!-- Modal -->
+    <!-- 申請入隊 Modal -->
+    <div class="modal-bg" id="applyModal">
+        <div class="modal-box">
+            <span class="modal-close" id="applyModalClose">&times;</span>
+            <div id="applyModalContent"></div>
+            <form id="applyForm" method="POST" style="display:none;">
+                <input type="hidden" name="apply_tid" id="apply_tid">
+            </form>
+            <div class="mt-3 d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" id="applyCancelBtn">取消</button>
+                <button type="button" class="btn btn-success btn-sm" id="applyConfirmBtn">確認申請</button>
+            </div>
+        </div>
+    </div>
+    <!-- 查看隊伍 Modal -->
     <div class="modal-bg" id="teamModal">
         <div class="modal-box">
             <span class="modal-close" id="modalClose">&times;</span>
@@ -192,6 +239,7 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
     </div>
 
     <script>
+        // 查看隊伍
         document.querySelectorAll('.view-team-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const teamName = btn.getAttribute('data-teamname');
@@ -210,7 +258,31 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
         document.getElementById('teamModal').onclick = function(e) {
             if (e.target === this) this.classList.remove('active');
         };
+
+        // 申請入隊
+        document.querySelectorAll('.apply-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const tid = btn.getAttribute('data-tid');
+                const teamName = btn.getAttribute('data-teamname');
+                document.getElementById('applyModalContent').innerHTML =
+                    `<div>是否要申請加入 <strong>${teamName}</strong>？</div>`;
+                document.getElementById('apply_tid').value = tid;
+                document.getElementById('applyModal').classList.add('active');
+            });
+        });
+        document.getElementById('applyModalClose').onclick = function() {
+            document.getElementById('applyModal').classList.remove('active');
+        };
+        document.getElementById('applyCancelBtn').onclick = function() {
+            document.getElementById('applyModal').classList.remove('active');
+        };
+        document.getElementById('applyConfirmBtn').onclick = function() {
+            document.getElementById('applyForm').submit();
+        };
+        document.getElementById('applyModal').onclick = function(e) {
+            if (e.target === this) this.classList.remove('active');
+        };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-</html>
+</html

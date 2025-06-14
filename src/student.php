@@ -92,7 +92,7 @@ $sidebar_teams = $my_teams;
                             </ul>
                         </li>
                         <li class="nav-item"><a class="nav-link" href="create_team.php">創建隊伍</a></li>
-                        <li class="nav-item"><a class="nav-link active" href="apply_team.php">申請入隊</a></li>
+                        <li class="nav-item"><a class="nav-link" href="apply_team.php">申請入隊</a></li>
                         <li class="nav-item"><a class="nav-link" href="manage_invitations.php">管理訊息</a></li>
                         <li class="nav-item"><a class="nav-link" href="team_history.php">組隊紀錄</a></li>
                         <li class="nav-item"><a class="nav-link" href="team_ratings.php">查看評價</a></li>

@@ -206,9 +206,44 @@ document.addEventListener('click', function(e) {
                 method: 'POST',
                 body: formData
             }).then(res => res.json()).then(r => {
+                let msg = '';
                 if (r.success) {
-                    document.getElementById('mainModal').classList.remove('active');
-                    setTimeout(() => alert('邀請已送出！'), 200);
+                    msg = `<div class="text-success">邀請 ${r.invitee_name} 成功！</div>`;
+                } else if (r.reason === 'already_in_team') {
+                    msg = `<div class="text-danger">該學生已經在隊伍內，無法重複邀請。</div>`;
+                } else if (r.reason === 'already_invited') {
+                    msg = `<div class="text-warning">已經邀請過該學生，請勿重複邀請。</div>`;
+                } else {
+                    msg = `<div class="text-danger">邀請失敗，請確認 SID 是否正確。</div>`;
+                }
+                showModal(msg);
+            });
+        };
+        document.getElementById('cancelModalBtn').onclick = function() {
+            document.getElementById('mainModal').classList.remove('active');
+        };
+    } else if (type === 'accept-applicant' || type === 'reject-applicant') {
+        const applicantId = btn.getAttribute('data-applicant-id');
+        const tid = btn.getAttribute('data-team-id');
+        const isAccept = type === 'accept-applicant';
+        let html = `<div class="mb-2">確定要${isAccept ? '接受' : '拒絕'}這位申請者嗎？</div>
+            <button type="button" class="btn btn-${isAccept ? 'success' : 'danger'}" id="confirmApplicantBtn">${isAccept ? '確認接受' : '確認拒絕'}</button>
+            <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>`;
+        showModal(html);
+
+        document.getElementById('confirmApplicantBtn').onclick = function() {
+            const formData = new FormData();
+            formData.append('tid', tid);
+            formData.append('applicant_id', applicantId);
+            formData.append('status', isAccept ? 'accepted' : 'rejected');
+            fetch('my_team.php?ajax=update-applicant-status', {
+                method: 'POST',
+                body: formData
+            }).then(res => res.json()).then(r => {
+                if (r.success) {
+                    location.reload();
+                } else {
+                    showModal('<div class="text-danger">操作失敗，請稍後再試。</div>');
                 }
             });
         };
@@ -254,3 +289,76 @@ document.getElementById('modalClose').onclick = function() {
 document.getElementById('mainModal').onclick = function(e) {
     if (e.target === this) this.classList.remove('active');
 };
+
+let withdrawData = {};
+let deleteData = {};
+// 撤回邀請 modal
+document.querySelectorAll('.open-modal[data-modal-type="withdraw-invitation"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        withdrawData = {
+            TeamID: btn.getAttribute('data-team-id'),
+            InviterID: btn.getAttribute('data-inviter-id'),
+            InviteeID: btn.getAttribute('data-invitee-id')
+        };
+        document.getElementById('withdrawInvitationModal').style.display = 'flex';
+    });
+});
+document.getElementById('cancelWithdrawInvitation').onclick = function() {
+    document.getElementById('withdrawInvitationModal').style.display = 'none';
+};
+document.getElementById('withdrawInvitationModalClose').onclick = function() {
+    document.getElementById('withdrawInvitationModal').style.display = 'none';
+};
+document.getElementById('confirmWithdrawInvitation').onclick = function() {
+    fetch('my_team.php?ajax=withdraw-invitation', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(withdrawData)
+    })
+    .then(res => res.text())
+    .then(txt => {
+        console.log('AJAX回傳:', txt);
+        let data = {};
+        try { data = JSON.parse(txt); } catch(e) { console.error('JSON解析失敗', e); }
+        if(data.success){
+            location.reload();
+        }else{
+            alert('撤回失敗');
+        }
+    });
+};
+
+// 刪除邀請 modal
+document.querySelectorAll('.open-modal[data-modal-type="delete-invitation"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        deleteData = {
+            TeamID: btn.getAttribute('data-team-id'),
+            InviterID: btn.getAttribute('data-inviter-id'),
+            InviteeID: btn.getAttribute('data-invitee-id')
+        };
+        document.getElementById('deleteInvitationModal').style.display = 'flex';
+    });
+});
+document.getElementById('cancelDeleteInvitation').onclick = function() {
+    document.getElementById('deleteInvitationModal').style.display = 'none';
+};
+document.getElementById('deleteInvitationModalClose').onclick = function() {
+    document.getElementById('deleteInvitationModal').style.display = 'none';
+};
+document.getElementById('confirmDeleteInvitation').onclick = function() {
+    // AJAX 刪除邀請
+    fetch('my_team.php?ajax=delete-invitation', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(deleteData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success){
+            location.reload();
+        }else{
+            alert('刪除失敗');
+        }
+    });
+};
+

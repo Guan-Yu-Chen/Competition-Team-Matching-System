@@ -1,4 +1,9 @@
 <?php
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require 'db_connect.php';
 session_start();
 
@@ -68,9 +73,19 @@ if ($TID) {
         $stmt = $pdo->prepare("SELECT a.ApplicantID, u.Name
                                FROM Applicationlist a
                                JOIN User u ON a.ApplicantID = u.Account
-                               WHERE a.TeamID = ?");
+                               WHERE a.TeamID = ? AND a.status = 'pending'");
         $stmt->execute([$TID]);
         $team_applicants = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 取得邀請名單
+        $team_id = $TID; // 假設用 GET 傳遞隊伍ID
+        $stmt = $pdo->prepare("SELECT i.*, inviter.Name AS inviter_name, invitee.Name AS invitee_name
+                                FROM invitationlist i
+                                JOIN user inviter ON i.InviterID = inviter.Account
+                                JOIN user invitee ON i.InviteeID = invitee.Account
+                                WHERE i.TeamID = ?");
+        $stmt->execute([$team_id]);
+        $invitations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // 參加的競賽
         $stmt = $pdo->prepare("SELECT c.CID, c.Name
@@ -249,17 +264,87 @@ if (isset($_GET['ajax'])) {
         echo json_encode(['success' => true]);
         exit;
     }
-    exit;
-}
+    // 處理 AJAX：邀請功能
+    if ($_GET['ajax'] === 'invite' && isset($_POST['tid']) && isset($_POST['sid'])) {
+        $tid = $_POST['tid'];
+        $sid = $_POST['sid'];
+        $inviter = $user_id;
 
-// 處理 AJAX：邀請功能
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'invite' && isset($_POST['tid']) && isset($_POST['sid'])) {
-    $tid = $_POST['tid'];
-    $sid = $_POST['sid'];
-    // 這裡假設 Invitation 有 Team, SID 欄位
-    $stmt = $pdo->prepare("INSERT INTO Invitation (Team, SID) VALUES (?, ?)");
-    $stmt->execute([$tid, $sid]);
-    echo json_encode(['success' => true]);
+        // 1. 檢查是否已經在隊伍內
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM TeamMembershipHistory WHERE Team = ? AND Member = ? AND Leave_Date IS NULL");
+        $stmt->execute([$tid, $sid]);
+        if ($stmt->fetchColumn() > 0) {
+            echo json_encode(['success' => false, 'reason' => 'already_in_team']);
+            exit;
+        }
+
+        // 2. 檢查是否已經邀請過（pending 狀態）
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM invitationlist WHERE TeamID = ? AND InviteeID = ? AND status = 'pending'");
+        $stmt->execute([$tid, $sid]);
+        if ($stmt->fetchColumn() > 0) {
+            echo json_encode(['success' => false, 'reason' => 'already_invited']);
+            exit;
+        }
+
+        // 3. 查詢對方名字
+        $stmt = $pdo->prepare("SELECT Name FROM User WHERE Account = ?");
+        $stmt->execute([$sid]);
+        $invitee = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // 4. 新增邀請
+        $stmt = $pdo->prepare("INSERT INTO invitationlist (TeamID, InviterID, InviteeID, status) VALUES (?, ?, ?, 'pending')");
+        $stmt->execute([$tid, $inviter, $sid]);
+        echo json_encode(['success' => true, 'invitee_name' => $invitee ? $invitee['Name'] : $sid]);
+        exit;
+    }
+
+    // 處理 AJAX：撤回邀請
+    if ($_GET['ajax'] === 'withdraw-invitation') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $pdo->prepare("DELETE FROM invitationlist WHERE TeamID = ? AND InviterID = ? AND InviteeID = ? AND status = 'pending'");
+        $ok = $stmt->execute([$data['TeamID'], $data['InviterID'], $data['InviteeID']]);
+        echo json_encode([
+            'success' => $ok,
+            'rowCount' => $stmt->rowCount()
+        ]);
+        exit;
+    }
+
+    // 處理 AJAX：刪除邀請
+    if ($_GET['ajax'] === 'delete-invitation') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $pdo->prepare("DELETE FROM invitationlist WHERE TeamID = ? AND InviterID = ? AND InviteeID = ?");
+        $ok = $stmt->execute([$data['TeamID'], $data['InviterID'], $data['InviteeID']]);
+        echo json_encode(['success' => $ok]);
+        exit;
+    }
+
+    // 處理 AJAX：接受申請者
+    if ($_GET['ajax'] === 'update-applicant-status' && isset($_POST['tid']) && isset($_POST['applicant_id']) && isset($_POST['status'])) {
+        $tid = $_POST['tid'];
+        $applicant_id = $_POST['applicant_id'];
+        $status = $_POST['status'];
+        if (!in_array($status, ['accepted', 'rejected'])) {
+            echo json_encode(['success' => false]);
+            exit;
+        }
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare("UPDATE Applicationlist SET status = ? WHERE TeamID = ? AND ApplicantID = ?");
+        $ok = $stmt->execute([$status, $tid, $applicant_id]);
+        if ($ok && $status === 'accepted') {
+            // 新增到 TeamMembershipHistory
+            $stmt2 = $pdo->prepare("INSERT INTO TeamMembershipHistory (Team, Member, Join_Date) VALUES (?, ?, CURDATE())");
+            $ok = $stmt2->execute([$tid, $applicant_id]);
+        }
+        if ($ok) {
+            $pdo->commit();
+        } else {
+            $pdo->rollBack();
+        }
+        echo json_encode(['success' => $ok]);
+        exit;
+    }
+
     exit;
 }
 ?>
@@ -432,6 +517,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'invite' && isset($_POST['tid']) &
                                             <td>
                                                 <button type="button" class="btn btn-info btn-sm open-modal" data-modal-type="profile" data-uid="<?php echo $applicant['ApplicantID']; ?>">查看個人資料</button>
                                                 <button type="button" class="btn btn-secondary btn-sm open-modal" data-modal-type="ratings" data-uid="<?php echo $applicant['ApplicantID']; ?>">查看評論</button>
+                                                <button type="button" class="btn btn-success btn-sm open-modal" data-modal-type="accept-applicant" data-applicant-id="<?php echo $applicant['ApplicantID']; ?>" data-team-id="<?php echo $TID; ?>">接受</button>
+                                                <button type="button" class="btn btn-danger btn-sm open-modal" data-modal-type="reject-applicant" data-applicant-id="<?php echo $applicant['ApplicantID']; ?>" data-team-id="<?php echo $TID; ?>">拒絕</button>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -440,6 +527,70 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'invite' && isset($_POST['tid']) &
                                     <?php endif; ?>
                                 </tbody>
                             </table>
+                            <strong>邀請中的成員</strong>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th>被邀請者</th>
+                                        <th>邀請者</th>
+                                        <th>狀態</th>
+                                        <th>操作</th>
+                                    </tr>
+                                    <?php if (empty($invitations)): ?>
+                                        <tr>
+                                            <td colspan="4" class="text-muted">目前沒有邀請中的成員</td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($invitations as $inv): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($inv['invitee_name']) ?></td>
+                                            <td><?= htmlspecialchars($inv['inviter_name']) ?></td>
+                                            <td>
+                                                <?php
+                                                    if ($inv['status'] === 'pending') {
+                                                        echo '<span class="status-pending">待接受</span>';
+                                                    } elseif ($inv['status'] === 'accepted') {
+                                                        echo '<span class="status-accepted">已接受</span>';
+                                                    } elseif ($inv['status'] === 'rejected') {
+                                                        echo '<span class="status-rejected">已拒絕</span>';
+                                                    } else {
+                                                        echo htmlspecialchars($inv['status']);
+                                                    }
+                                                ?>
+                                            </td>
+                                            <td>
+                                            <!-- 查看個人資料（用 modal） -->
+                                            <button type="button"
+                                                class="btn btn-info btn-sm open-modal"
+                                                data-modal-type="profile"
+                                                data-uid="<?= htmlspecialchars($inv['InviteeID']) ?>">
+                                                查看個人資料
+                                            </button>
+                                            <?php if ($inv['status'] == 'pending'): ?>
+                                                <!-- 撤回邀請（跳 modal 確認） -->
+                                                <button type="button"
+                                                    class="btn btn-danger btn-sm open-modal"
+                                                    data-modal-type="withdraw-invitation"
+                                                    data-team-id="<?= htmlspecialchars($inv['TeamID']) ?>"
+                                                    data-inviter-id="<?= htmlspecialchars($inv['InviterID']) ?>"
+                                                    data-invitee-id="<?= htmlspecialchars($inv['InviteeID']) ?>">
+                                                    撤回邀請
+                                                </button>
+                                            <?php else: ?>
+                                                <!-- 刪除（跳 modal 確認） -->
+                                                <button type="button"
+                                                    class="btn btn-danger btn-sm open-modal"
+                                                    data-modal-type="delete-invitation"
+                                                    data-team-id="<?= htmlspecialchars($inv['TeamID']) ?>"
+                                                    data-inviter-id="<?= htmlspecialchars($inv['InviterID']) ?>"
+                                                    data-invitee-id="<?= htmlspecialchars($inv['InviteeID']) ?>">
+                                                    刪除
+                                                </button>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </table>
                         </div>
                         <div class="mb-3">
                             <strong>參加的競賽：</strong>
@@ -483,6 +634,30 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'invite' && isset($_POST['tid']) &
         <div class="modal-box">
             <span class="modal-close" id="modalClose">&times;</span>
             <div id="modalContent"></div>
+        </div>
+    </div>
+    <!-- 撤回邀請 Modal -->
+    <div class="modal-bg" id="withdrawInvitationModal" style="display:none;">
+        <div class="modal-box">
+            <span class="modal-close" id="withdrawInvitationModalClose">&times;</span>
+            <div id="withdrawInvitationModalContent">
+                <div class="mb-2">確定要撤回這個邀請嗎？</div>
+                <button type="button" class="btn btn-danger" id="confirmWithdrawInvitation">確認撤回</button>
+                <button type="button" class="btn btn-secondary" id="cancelWithdrawInvitation">取消</button>
+            </div>
+        </div>
+    </div>
+    <!-- 刪除邀請 Modal -->
+    <div class="modal-bg" id="deleteInvitationModal" style="display:none;">
+        <div class="modal-box">
+            <span class="modal-close" id="deleteInvitationModalClose">&times;</span>
+            <div id="deleteInvitationModalContent">
+                <p>你確定要刪除此邀請嗎？</p>
+                <div class="text-end">
+                    <button type="button" class="btn btn-secondary btn-sm" id="cancelDeleteInvitation">取消</button>
+                    <button type="button" class="btn btn-danger btn-sm" id="confirmDeleteInvitation">刪除</button>
+                </div>
+            </div>
         </div>
     </div>
     <script src="../assets/js/my_team.js"></script>
