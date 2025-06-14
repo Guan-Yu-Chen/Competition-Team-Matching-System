@@ -25,6 +25,10 @@ $my_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // 取得目前所有隊伍（只要隊名和TID，for sidebar）
 $sidebar_teams = $my_teams;
 
+// 取得目前選中的隊伍ID
+$TID = $_GET['TID'] ?? null;
+$page_mode = 'list'; // 這裡僅用於 sidebar 樣式
+
 // 處理 AJAX 請求
 if (isset($_GET['team_info']) && isset($_GET['team_id'])) {
     $team_id = $_GET['team_id'];
@@ -103,7 +107,7 @@ if (isset($_GET['team_info']) && isset($_GET['team_id'])) {
     <meta charset="UTF-8">
     <title>隊伍歷史</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="../assets/css/style.css" rel="stylesheet">
     <style>
         .sidebar-sticky { min-height: 100vh; }
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }

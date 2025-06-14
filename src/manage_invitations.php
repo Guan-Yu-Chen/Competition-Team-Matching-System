@@ -121,7 +121,7 @@ foreach ($applications as $app) {
     <meta charset="UTF-8">
     <title>管理組隊邀請</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="../assets/css/style.css" rel="stylesheet">
     <style>
         .sidebar-sticky { min-height: 100vh; }
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }

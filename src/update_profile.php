@@ -69,6 +69,10 @@ $my_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // 取得目前所有隊伍（只要隊名和TID，for sidebar）
 $sidebar_teams = $my_teams;
 
+// 取得目前選中的隊伍ID
+$TID = $_GET['TID'] ?? null;
+$page_mode = 'list'; // 這裡僅用於 sidebar 樣式
+
 $stmt = $pdo->prepare("SELECT Name FROM User WHERE Account = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -91,6 +95,7 @@ $portfolio = implode(', ', $stmt->fetchAll(PDO::FETCH_COLUMN));
     <meta charset="UTF-8">
     <title>更新個人檔案</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../assets/css/style.css" rel="stylesheet">
     <style>
         .sidebar-sticky { min-height: 100vh; }
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }

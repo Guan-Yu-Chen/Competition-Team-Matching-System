@@ -13,6 +13,10 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
     exit;
 }
 
+// 取得目前選中的隊伍ID
+$TID = $_GET['TID'] ?? null;
+$page_mode = 'list'; // 這裡僅用於 sidebar 樣式
+
 // 收到刪除請求，嘗試刪除評論
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['team_id'], $_POST['reviewer'], $_POST['reviewee'])) {
     try {
@@ -72,7 +76,7 @@ $sidebar_teams = $my_teams;
     <meta charset="UTF-8">
     <title>隊友評價</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="../assets/css/style.css" rel="stylesheet">
     <style>
         .sidebar-sticky { min-height: 100vh; }
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }
