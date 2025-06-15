@@ -13,6 +13,27 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("Location: index.php");
     exit;
 }
+
+// ver0.2 新增 teamdispute TABLE 欄位"Decision"顯示"判決結果：申述成立、不申述、惡意誣告"，若未成立顯示NULL。
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dispute_id'], $_POST['decision'])) {
+    $dispute_id = $_POST['dispute_id'];
+    $decision = $_POST['decision'];
+
+    echo "處理糾紛 ID: " . htmlspecialchars($dispute_id) . "<br>";
+    echo "決策結果: " . htmlspecialchars($decision) . "<br>";
+    // 建議先檢查 $dispute_id 和 $decision 是否有效
+    $allowed_decisions = ['申述成立', '不申述', '惡意誣告'];
+    if (!in_array($decision, $allowed_decisions)) {
+        die('非法的判決結果');
+    }
+
+    $stmt = $pdo->prepare("UPDATE TeamDispute SET Decision = ? WHERE DisputeID = ?");
+    $stmt->execute([$decision, $dispute_id]);
+
+    header("Location: manage_disputes.php");
+    exit;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -50,32 +71,84 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 
             <!-- 動態內容 -->
             <main class="col-md-10 px-4">
+                <!-- ver0.2 將糾紛管理分成兩部分，待處理糾紛和已處理糾紛顯示。 -->
                 <h2>糾紛管理</h2>
                 <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>糾紛ID</th>
-                            <th>申訴人</th>
-                            <th>被申訴人</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
                     <tbody>
                         <?php
-                        $stmt = $pdo->prepare("SELECT DisputeID, ComplainantID, RespondentID FROM TeamDispute WHERE AdminID = ?");
+                        $stmt = $pdo->prepare("SELECT DisputeID, ComplainantID, RespondentID, DisputeDetails, Decision FROM TeamDispute WHERE HandlerID = ?");
                         $stmt->execute([$_SESSION['user_id']]);
+
+                        $processed = [];  // 已處理
+                        $pending = [];    // 待處理
+
                         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                            echo '
-                            <tr>
-                                <td>' . htmlspecialchars($row['DisputeID']) . '</td>
-                                <td>' . htmlspecialchars($row['ComplainantID']) . '</td>
-                                <td>' . htmlspecialchars($row['RespondentID']) . '</td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary">處理</button>
-                                </td>
-                            </tr>';
+                            if (empty($row['Decision'])) {
+                                $pending[] = $row;
+                            } else {
+                                $processed[] = $row;
+                            }
                         }
                         ?>
+
+                        <h3>待處理糾紛</h3>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>糾紛ID</th>
+                                    <th>申訴人</th>
+                                    <th>被申訴人</th>
+                                    <th>糾紛內容</th>
+                                    <th>判決結果</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($pending as $row): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($row['DisputeID']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['ComplainantID']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['RespondentID']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['DisputeDetails']); ?></td>
+                                    <td>待處理</td>
+                                    <td>
+                                        <!-- ver0.2 實作"處理"按鈕使用 modal 。 -->
+                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#handleModal"
+                                            data-disputeid="<?php echo htmlspecialchars($row['DisputeID']); ?>">處理</button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+
+                        <h3>已處理糾紛</h3>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>糾紛ID</th>
+                                    <th>申訴人</th>
+                                    <th>被申訴人</th>
+                                    <th>糾紛內容</th>
+                                    <th>判決結果</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($processed as $row): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($row['DisputeID']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['ComplainantID']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['RespondentID']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['DisputeDetails']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['Decision']); ?></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#handleModal"
+                                            data-disputeid="<?php echo htmlspecialchars($row['DisputeID']); ?>">查看</button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </tbody>
                 </table>
                 <a href="admin.php" class="btn btn-secondary">返回</a>
@@ -84,5 +157,47 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- ver0.2 處理糾紛 Modal -->
+<div class="modal fade" id="handleModal" tabindex="-1" aria-labelledby="handleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="post" id="handleForm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="handleModalLabel">處理糾紛</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="dispute_id" id="dispute_id" value="">
+          <!-- get value from data-disputeid -->
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                var handleModal = document.getElementById('handleModal');
+                handleModal.addEventListener('show.bs.modal', function (event) {
+                    var button = event.relatedTarget; // 按鈕觸發的事件
+                    var disputeId = button.getAttribute('data-disputeid'); // 獲取 data-disputeid 屬性
+                    var disputeIdInput = document.getElementById('dispute_id');
+                    disputeIdInput.value = disputeId; // 設置隱藏輸入框的值
+                });
+                });
+            </script>
+          <div class="mb-3">
+            <label for="decision" class="form-label">判決結果</label>
+            <select name="decision" id="decision" class="form-select" required>
+              <option value="">請選擇</option>
+              <option value="申述成立">申訴人理由充分，申述成立</option>
+              <option value="不申述">申訴人理由不足，不申述</option>
+              <option value="惡意誣告">申訴人惡意誣告</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-primary">送出</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
 </body>
 </html>

@@ -60,6 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             background: #fff;
         }
 
+        .text-soft-blue { color: #b7b3e4 !important; }
+        .text-soft-purple { color: #eae6fb !important; }
+        .text-soft-grayblue { color: #e3e7fa !important; }
+
         .navbar-custom {
             position: relative;
             background: linear-gradient(120deg, #edeaff 60%, #f8f9fc 100%);
@@ -95,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             font-family: 'Noto Serif TC', 'Noto Sans TC', serif;
             font-weight: 900;
             font-size: 2.1rem;
-            color: #3c3163 !important;
+            color: #8f94fb !important;
             letter-spacing: 0.12em;
             line-height: 1.08;
             padding: 0;
@@ -215,8 +219,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                                         
     <!-- 主要內容 -->
     <div class="container my-4">
-        <h2>競賽列表</h2>
-        <div class="row">
+        <!-- ver0.2 新增"多選篩選Modal"功能，將 competition 的 Feild 當作 Tags 進行篩選，並只顯示已經篩選的競賽。 -->
+        <h2>競賽列表</h2><div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <span>熱門標籤：</span>
+                <span id="tag-container">
+                    <!-- JS會動態插入前三個tag -->
+                    <?php
+                    // 取得所有競賽的標籤
+                    $stmt = $pdo->query("SELECT DISTINCT Field FROM Competition");
+                    $tags = [];
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $fields = explode(',', $row['Field']);
+                        foreach ($fields as $field) {
+                            $field = trim($field);
+                            if ($field && !in_array($field, $tags)) {
+                                $tags[] = $field;
+                            }
+                        }
+                    }
+                    // 只取前三個熱門標籤
+                    $top_tags = array_slice($tags, 0, 3);
+                    foreach ($top_tags as $tag) {
+                        echo '<span class="badge bg-secondary me-1">' . htmlspecialchars($tag) . '</span>';
+                    }
+                    ?>
+                </span>
+                <!-- <button id="toggle-tags-btn" class="btn btn-link p-0">其他...</button> -->
+            </div>
+            
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#filterModal">篩選標籤</button>
+        </div>
+        
+        <div class="row" id="competition-list">
+                    <!-- 競賽卡片列表，PHP輸出 -->
+                    <?php
+            // 預設不過濾或用GET接收filter參數
+            if (isset($_GET['field'])) {
+                if (is_array($_GET['field'])) {
+                    $filter_tags = $_GET['field'];  // 支援 field[]=tag 多選表單
+                } else {
+                    $filter_tags = explode(',', $_GET['field']);  // 支援 field=tag1,tag2 字串串接
+                }
+            } else {
+                $filter_tags = [];
+            }
+            
+            // 初始 SQL 語句
+            $sql = "SELECT CID, Name, Organizing_Units, Registration_Deadline, Field FROM Competition";
+
+            // 加入條件
+            $params = [];
+            if (!empty($filter_tags)) {
+                $conditions = [];
+                foreach ($filter_tags as $i => $tag) {
+                    $conditions[] = "Field LIKE :tag$i";
+                    $params[":tag$i"] = '%' . $tag . '%';  // 使用綁定參數避免 SQL 注入
+                }
+                $sql .= " WHERE " . implode(" OR ", $conditions);  // 使用 AND 做交集
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+
+            // 收集所有出現過的 tag
+            $now_tags = [];
+
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                echo '
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title text-soft-blue">' . htmlspecialchars($row['Name']) . '</h5>
+                            <p class="card-text text-soft-blue">主辦單位: ' . htmlspecialchars($row['Organizing_Units']) . '</p>
+                            <p class="card-text text-soft-blue">報名截止: ' . htmlspecialchars($row['Registration_Deadline']) . '</p>
+                            <p class="card-text text-soft-blue">標籤: ';
+
+                $tags = explode(',', $row['Field']);
+                foreach ($tags as $tag) {
+                    $tag = trim($tag);
+                    if ($tag !== '') {
+                        echo '<span class="badge bg-secondary me-1">' . htmlspecialchars($tag) . '</span>';
+                    }
+                }
+
+                echo '</p>
+                            <a href="competition_details.php?cid=' . htmlspecialchars($row['CID']) . '" class="btn btn-info">查看詳情</a>
+                        </div>
+                    </div>
+                </div>';
+            }
+            ?>
+        </div>
+        <!-- 新增"多選篩選Modal"功能，將 competition 的 Feild 當作 Tags 進行篩選，並只顯示已經篩選的競賽。 -->
+        <!-- ver0.1 原本只顯示所有競賽的功能 -->
+        <!-- <div class="row">
             <?php
             $stmt = $pdo->query("SELECT CID, Name, Organizing_Units, Registration_Deadline FROM Competition");
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -233,7 +330,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                 </div>';
             }
             ?>
-        </div>
+        </div> -->
+        <!-- 原本只顯示所有競賽的功能 -->
 
         <h2 class="mt-5">最新公告</h2>
         <div id="announcementCarousel" class="carousel slide" data-bs-ride="carousel">
@@ -247,8 +345,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                     <div class="carousel-item ' . $active . '">
                         <div class="card">
                             <div class="card-body">
-                                <h5 class="card-title">' . htmlspecialchars($row['Title']) . '</h5>
-                                <p class="card-text">' . htmlspecialchars($row['Content']) . '</p>
+                                <h5 class="card-title text-soft-blue">' . htmlspecialchars($row['Title']) . '</h5>
+                                <p class="card-text text-soft-blue">' . htmlspecialchars($row['Content']) . '</p>
                             </div>
                         </div>
                     </div>';
@@ -269,5 +367,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         <p class="footer-title">版權 © 2025 競賽組隊系統</p>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- ver0.2 多選篩選Modal -->
+    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="GET" action="" id="filterForm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="filterModalLabel">標籤篩選</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                    </div>
+                    <div class="modal-body" id="filter-tags-container">
+                        <!-- JS動態插入checkbox列表 -->
+                        <?php
+                        // 取得所有 Field 欄位
+                            $all_tags = [];
+
+                            $stmt = $pdo->query("SELECT Field FROM Competition");
+                            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                $tags = explode(',', $row['Field']);  // 以逗號分隔標籤
+                                foreach ($tags as $tag) {
+                                    $tag = trim($tag);  // 去除前後空白
+                                    if ($tag !== '' && !in_array($tag, $all_tags)) {
+                                        $all_tags[] = $tag;  // 確保唯一性
+                                    }
+                                }
+                            }
+
+                            // 按照字母排序（可選）
+                            sort($all_tags, SORT_STRING);
+                        ?>
+
+                        <?php
+                            foreach ($all_tags as $tag) {
+                                $is_checked = in_array($tag, $now_tags) ? 'checked' : '';
+                                echo '
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="field[]" value="' . htmlspecialchars($tag) . '" id="filter_' . htmlspecialchars($tag) . '" ' . $is_checked . '>
+                                    <label class="form-check-label" for="filter_' . htmlspecialchars($tag) . '">' . htmlspecialchars($tag) . '</label>
+                                </div>';
+                            }
+                        ?>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="clearFilterBtn">清除</button>
+                        <button type="submit" class="btn btn-primary">套用篩選</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+    document.getElementById('clearFilterBtn').addEventListener('click', function () {
+        document.querySelectorAll('#filter-tags-container input[type="checkbox"]').forEach(function (checkbox) {
+            checkbox.checked = false;
+        });
+    });
+    </script>
+    <!-- 多選篩選Modal -->
+
 </body>
 </html>

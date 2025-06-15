@@ -82,6 +82,8 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
                                 <th>操作</th>
                             </tr>
                         </thead>
+                        <!-- ver0.2 新增批准跟回絕按鈕。 -->
+                        <!-- (ver0.2 議題) admin.php: 原本在處理是否審核是看欄位資訊是否包含"(待審核)"，是否要新增欄位 state 表示處理狀態? -->
                         <tbody>
                             <?php
                             $stmt = $pdo->query("SELECT CID, Name, Organizing_Units, Registration_Deadline FROM Competition");
@@ -98,7 +100,8 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
                                     echo '
                                         <form method="POST" action="approve_competition.php" style="display:inline;">
                                             <input type="hidden" name="cid" value="' . htmlspecialchars($row['CID']) . '">
-                                            <button type="submit" class="btn btn-sm btn-success">批准</button>
+                                            <button type="submit" name="action" value="approve" class="btn btn-sm btn-success" onclick="return confirm(\'確定要批准這個競賽嗎？\')">批准</button>
+                                            <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger" onclick="return confirm(\'確定要回絕這個競賽嗎？\')">回絕</button>
                                         </form>';
                                 }
                                 echo '
@@ -107,6 +110,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
                             }
                             ?>
                         </tbody>
+                        <!-- 新增批准跟回絕按鈕。 -->
                     </table>
                 </section>
             </main>
