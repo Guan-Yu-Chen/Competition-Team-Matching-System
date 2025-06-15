@@ -792,7 +792,7 @@ ALTER TABLE `teamrequireskill`
   ADD CONSTRAINT `teamrequireskill_ibfk_1` FOREIGN KEY (`Team`) REFERENCES `team` (`TID`) ON DELETE CASCADE;
 COMMIT;
 
----- ver0.2 新增 TeamDispute 表的 Decision 欄位
+-- ver0.2 新增 TeamDispute 表的 Decision 欄位
 ALTER TABLE TeamDispute
 ADD COLUMN Decision VARCHAR(50) DEFAULT NULL COMMENT '判決結果：申述成立、不申述、惡意誣告';
 
