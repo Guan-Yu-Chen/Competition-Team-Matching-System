@@ -61,8 +61,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         }
 
         .text-soft-blue { color: #b7b3e4 !important; }
-        .text-soft-purple { color: #eae6fb !important; }
-        .text-soft-grayblue { color: #e3e7fa !important; }
 
         .navbar-custom {
             position: relative;

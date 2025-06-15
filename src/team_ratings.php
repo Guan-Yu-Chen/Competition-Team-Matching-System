@@ -78,6 +78,8 @@ $sidebar_teams = $my_teams;
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="../assets/css/style.css" rel="stylesheet">
     <style>
+        .navbar-brand { color: #8f94fb; }
+        
         .sidebar-sticky { min-height: 100vh; }
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }
         .sidebar .nav-link { cursor: pointer; }

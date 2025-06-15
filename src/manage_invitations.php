@@ -123,6 +123,8 @@ foreach ($applications as $app) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="../assets/css/style.css" rel="stylesheet">
     <style>
+        .navbar-brand { color: #8f94fb; }
+
         .sidebar-sticky { min-height: 100vh; }
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }
         .sidebar .nav-link { cursor: pointer; }
@@ -271,7 +273,7 @@ foreach ($applications as $app) {
                                         >查看隊伍</button>
                                         <?php if ($app['status'] === 'pending'): ?>
                                             <button type="button"
-                                                class="btn btn-warning btn-sm withdraw-app-btn"
+                                                class="btn btn-success btn-sm withdraw-app-btn"
                                                 data-tid="<?php echo htmlspecialchars($app['TID']); ?>"
                                                 data-teamname="<?php echo htmlspecialchars($app['Team_Name']); ?>"
                                             >撤回申請</button>

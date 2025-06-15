@@ -107,6 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['apply_tid'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="../assets/css/style.css" rel="stylesheet">
     <style>
+        .navbar-brand { color: #8f94fb; }
+
         .sidebar-sticky { min-height: 100vh; }
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }
         .sidebar .nav-link { cursor: pointer; }
@@ -195,16 +197,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['apply_tid'])) {
                                 <td>
                                     <div class="d-flex gap-2">
                                         <button type="button"
-                                            class="btn btn-success btn-sm apply-btn"
-                                            data-tid="<?php echo htmlspecialchars($rec['TID']); ?>"
-                                            data-teamname="<?php echo htmlspecialchars($rec['Team_Name']); ?>"
-                                        >申請入隊</button>
-                                        <button type="button"
                                             class="btn btn-primary btn-sm view-team-btn"
                                             data-leader="<?php echo htmlspecialchars($team_info[$rec['TID']]['leader']); ?>"
                                             data-skills="<?php echo htmlspecialchars(implode(', ', $team_info[$rec['TID']]['skills'])); ?>"
                                             data-teamname="<?php echo htmlspecialchars($rec['Team_Name']); ?>"
                                         >查看隊伍</button>
+                                        <button type="button"
+                                            class="btn btn-success btn-sm apply-btn"
+                                            data-tid="<?php echo htmlspecialchars($rec['TID']); ?>"
+                                            data-teamname="<?php echo htmlspecialchars($rec['Team_Name']); ?>"
+                                        >申請入隊</button>
                                     </div>
                                 </td>
                             </tr>

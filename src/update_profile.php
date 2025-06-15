@@ -101,6 +101,8 @@ $portfolio = implode(', ', $stmt->fetchAll(PDO::FETCH_COLUMN));
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }
         .sidebar .nav-link { cursor: pointer; }
         .sidebar .team-list { display: block; padding-left: 1.5em; }
+
+        .navbar-brand { color: #8f94fb; }
     </style>
 </head>
 <body>

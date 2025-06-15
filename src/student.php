@@ -38,6 +38,12 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="../assets/css/style.css" rel="stylesheet">
     <style>
+        .navbar-brand { color: #8f94fb; }
+
+        .text-soft-blue {
+            color: #8b95b6 !important;
+        }
+        
         .student-header {
             font-size: 1.1rem;
             font-weight: 500;
@@ -54,7 +60,7 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
         }
         .student-header .student-name {
             font-weight: 500;
-            color: #3c3163;
+            color: #8f94fb;
         }
         .navbar {
             padding-top: 0.4rem;
@@ -69,10 +75,7 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
 <body>
     <nav class="navbar navbar-light bg-light">
         <div class="container">
-            <span class="student-header">
-                <span class="student-role">學生：</span>
-                <span class="student-name"><?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
-            </span>
+            <a class="navbar-brand" href="#">學生: <?php echo htmlspecialchars($_SESSION['user_name']); ?></a>
         </div>
     </nav>
     <div class="container-fluid">
@@ -106,7 +109,7 @@ $page_mode = 'list'; // 這裡僅用於 sidebar 樣式
             </nav>
             <main class="col-md-10 px-4">
                 <h2>歡迎，<?php echo htmlspecialchars($_SESSION['user_name']); ?>！</h2>
-                <p>請從側邊欄選擇功能。</p>
+                <p class="text-soft-blue">請從側邊欄選擇功能。</p>
             </main>
         </div>
     </div>

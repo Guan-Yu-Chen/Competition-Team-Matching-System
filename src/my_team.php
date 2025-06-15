@@ -357,6 +357,13 @@ if (isset($_GET['ajax'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="../assets/css/style.css" rel="stylesheet">
     <style>
+        strong {
+            color: #8b95b6;
+        }
+        .text-soft-blue { color: #b7b3e4 !important; }
+
+        .navbar-brand { color: #8f94fb; }
+
         .sidebar-sticky { min-height: 100vh; }
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }
         .sidebar .nav-link { cursor: pointer; }
@@ -459,7 +466,9 @@ if (isset($_GET['ajax'])) {
                     <?php else: ?>
                         <h2>隊伍資訊：<?php echo htmlspecialchars($team_detail['Team_Name']); ?></h2>
                         <div class="mb-3"><strong>隊伍技能需求：</strong>
-                            <?php echo $team_skills ? htmlspecialchars(implode(', ', $team_skills)) : '無'; ?>
+                            <span class="text-soft-blue">
+                                <?php echo $team_skills ? htmlspecialchars(implode(', ', $team_skills)) : '無'; ?>
+                            </span>
                             <button type="button" class="btn btn-sm btn-outline-primary ms-2 open-modal" id="editSkillBtn"
                                 data-modal-type="edit-skill"
                                 data-team-id="<?php echo $TID; ?>"
