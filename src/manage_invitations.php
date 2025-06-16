@@ -394,7 +394,7 @@ foreach ($applications as $app) {
                 document.getElementById('action_tid').value = tid;
                 document.getElementById('actionModalBtns').innerHTML =
                     `<button type="button" class="btn btn-secondary btn-sm" id="actionCancelBtn">取消</button>
-                     <button type="button" class="btn btn-warning btn-sm" id="actionConfirmBtn">撤回申請</button>`;
+                     <button type="button" class="btn btn-danger btn-sm" id="actionConfirmBtn">撤回申請</button>`;
                 document.getElementById('actionModal').classList.add('active');
                 document.getElementById('actionConfirmBtn').onclick = function() {
                     document.getElementById('actionForm').submit();

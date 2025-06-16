@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt = $pdo->prepare("UPDATE User SET Name = ? WHERE Account = ?");
     $stmt->execute([$name, $_SESSION['user_id']]);
+    $_SESSION['user_name'] = $name;
 
     $stmt = $pdo->prepare("DELETE FROM Skill WHERE SID = ?");
     $stmt->execute([$_SESSION['user_id']]);

@@ -107,7 +107,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'rate_members' && isset($_GET['tea
     $leave_date = $_GET['leave_date'];
     $current_user = $_SESSION['user_id'];
 
-    // 取得同隊成員
+    // leave_date 處理
+    if ($leave_date === '尚未離開') {
+        $leave_date = date('Y-m-d');
+    }
+
+    // 取得同隊成員（包含自己）
     $stmt = $pdo->prepare(
         "SELECT m.Member, u.Name, t.Leader
         FROM TeamMembershipHistory m
@@ -236,6 +241,37 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'rate_members' && isset($_GET['tea
                     </thead>
                     <tbody>
                         <?php
+                        // 目前隊伍（Leave_Date 為 NULL）
+                        $stmt = $pdo->prepare("SELECT t.Team_Name, t.TID, tmh.Join_Date
+                                                FROM Team AS t
+                                                JOIN TeamMembershipHistory AS tmh
+                                                ON tmh.Team = t.TID
+                                                WHERE tmh.Member = ? AND tmh.Leave_Date IS NULL");
+                        $stmt->execute([$_SESSION['user_id']]);
+                        $hasCurrent = false;
+                        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                            $hasCurrent = true;
+                            echo '
+                            <tr>
+                                <td>' . htmlspecialchars($row['Team_Name']) . '</td>
+                                <td>' . htmlspecialchars($row['Join_Date']) . '</td>
+                                <td>尚未離開</td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm view-team-btn"
+                                        data-team="' . htmlspecialchars($row['TID']) . '"
+                                        data-type="past"
+                                        data-join="' . htmlspecialchars($row['Join_Date']) . '"
+                                        data-leave="尚未離開">查看</button>
+                                    <button class="btn btn-success btn-sm rate-members-btn"
+                                        data-team="' . htmlspecialchars($row['TID']) . '"
+                                        data-join="' . htmlspecialchars($row['Join_Date']) . '"
+                                        data-leave="尚未離開">
+                                        評論成員
+                                    </button>
+                                </td>
+                            </tr>';
+                        }
+
                         // 過去隊伍：Leave_Date 不為 NULL
                         $stmt = $pdo->prepare("SELECT t.Team_Name, t.TID, tmh.Join_Date, tmh.Leave_Date
                                                 FROM Team AS t 
@@ -269,11 +305,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'rate_members' && isset($_GET['tea
                                 </td>
                             </tr>';
                         }
-                        if (!$hasPast) {
-                            echo '<tr><td colspan="4" class="text-muted">尚未有過去隊伍紀錄</td></tr>';
+                        if (!$hasCurrent && !$hasPast) {
+                            echo '<tr><td colspan="4" class="text-muted">尚未有隊伍紀錄</td></tr>';
                         }
                         ?>
-                    </tbody>
+                        </tbody>
                 </table>
                 <a href="student.php" class="btn btn-secondary">返回</a>
             </main>
@@ -519,4 +555,5 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'rate_members' && isset($_GET['tea
                 });
         });
     </script>
-    <script src
+</body>
+</html>
