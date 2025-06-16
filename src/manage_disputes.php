@@ -52,10 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dispute_id'], $_POST[
     </nav>
 
     <!-- 主要內容 -->
-    <div class="container-fluid">
+    <div class="container mt-4">
         <div class="row">
             <!-- 側邊欄 -->
-            <nav class="col-md-2 bg-light sidebar">
+            <!-- <nav class="col-md-2 bg-light sidebar">
                 <div class="sidebar-sticky d-flex flex-column" style="height: 100%;">
                     <ul class="nav flex-column flex-grow-1">
                         <li class="nav-item"><a class="nav-link" href="index.php">首頁</a></li>
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dispute_id'], $_POST[
                         <li class="nav-item"><a class="nav-link logout" href="?logout=1">登出</a></li>
                     </ul>
                 </div>
-            </nav>
+            </nav> -->
 
             <!-- 動態內容 -->
             <main class="col-md-10 px-4">

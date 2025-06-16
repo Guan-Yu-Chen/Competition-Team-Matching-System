@@ -26,14 +26,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     $account = $_POST['account'];
     $password = $_POST['password'];
     $name = $_POST['name'];
-    $email = $_POST['email'];
+    // $email = $_POST['email'];
     $stmt = $pdo->prepare("SELECT Account FROM User WHERE Account = ?");
     $stmt->execute([$account]);
     if ($stmt->fetch()) {
         $register_error = "帳號已存在";
     } else {
-        $stmt = $pdo->prepare("INSERT INTO User (Account, Password, Name, Email) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$account, $password, $name, $email]);
+        // $stmt = $pdo->prepare("INSERT INTO User (Account, Password, Name, Email) VALUES (?, ?, ?, ?)");
+        // $stmt->execute([$account, $password, $name, $email]);
+        $stmt = $pdo->prepare("INSERT INTO User (Account, Password, Name) VALUES (?, ?, ?)");
+        $stmt->execute([$account, $password, $name]);
         $stmt = $pdo->prepare("INSERT INTO Student (SID) VALUES (?)");
         $stmt->execute([$account]);
         $register_success = "註冊成功，請登入";
@@ -126,6 +128,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             .navbar-custom { min-height: 95px; padding-top: 1.2rem; padding-bottom: 1.2rem; }
         }
     </style>
+    <!-- ver0.3 註冊失敗動畫 -->
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -159,7 +167,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <?php if (isset($login_error)) echo "<div class='alert alert-danger'>$login_error</div>"; ?>
+                    <!-- <?php if (isset($login_error)) echo "<div class='alert alert-danger'>$login_error</div>"; ?> -->
+                    <!-- ver0.3 註冊失敗動畫 -->
+                    <?php
+                    if (isset($login_error)) {
+                        $msg = htmlspecialchars($login_error, ENT_QUOTES, 'UTF-8');
+                        echo "<script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: '登入失敗',
+                                    text: \"$msg\"
+                                });
+                            });
+                        </script>";
+                    }
+                    ?>
                     <form method="POST">
                         <input type="hidden" name="login" value="1">
                         <div class="mb-3">
@@ -186,8 +209,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <?php if (isset($register_error)) echo "<div class='alert alert-danger'>$register_error</div>"; ?>
-                    <?php if (isset($register_success)) echo "<div class='alert alert-success'>$register_success</div>"; ?>
+                    <!-- <?php if (isset($register_error)) echo "<div class='alert alert-danger'>$register_error</div>"; ?> -->
+                    <!-- <?php if (isset($register_success)) echo "<div class='alert alert-success'>$register_success</div>"; ?> -->
+                    <!-- ver0.3 註冊失敗動畫 -->
+                    <?php
+                    if (isset($register_error)) {
+                        $msg = htmlspecialchars($register_error, ENT_QUOTES, 'UTF-8');
+                        echo "<script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: '註冊失敗',
+                                    text: \"$msg\"
+                                });
+                            });
+                        </script>";
+                    }
+
+                    if (isset($register_success)) {
+                        $msg = htmlspecialchars($register_success, ENT_QUOTES, 'UTF-8');
+                        echo "<script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '註冊成功',
+                                    text: \"$msg\"
+                                });
+                            });
+                        </script>";
+                    }
+                    ?>
                     <form method="POST">
                         <input type="hidden" name="register" value="1">
                         <div class="mb-3">
@@ -202,10 +253,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                             <label for="register_name" class="form-label">姓名</label>
                             <input type="text" class="form-control" id="register_name" name="name" required>
                         </div>
-                        <div class="mb-3">
+                        <!-- <div class="mb-3">
                             <label for="register_email" class="form-label">電子郵件</label>
                             <input type="email" class="form-control" id="register_email" name="email" required>
-                        </div>
+                        </div> -->
                         <button type="submit" class="btn btn-success">註冊</button>
                     </form>
                 </div>
@@ -284,6 +335,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             $now_tags = [];
 
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $tags = explode(',', $row['Field']);
+                foreach ($tags as $t) {
+                    $t = trim($t);
+                    if ($t && !in_array($t, $now_tags)) {
+                        $now_tags[] = $t;
+                    }
+                }
+                
                 echo '
                 <div class="col-md-4 mb-3">
                     <div class="card">

@@ -61,7 +61,8 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
                     <ul class="nav flex-column flex-grow-1">
                         <li class="nav-item"><a class="nav-link" href="index.php">首頁</a></li>
                         <li class="nav-item"><a class="nav-link" href="create_competition.php">創建競賽</a></li>
-                        <li class="nav-item"><a class="nav-link active" href="#competitions">競賽管理</a></li>
+                        <!-- <li class="nav-item"><a class="nav-link active" href="#competitions">競賽管理</a></li> -->
+                        <li class="nav-item"><a class="nav-link" href="manage_teamratings.php">評價管理</a></li>
                         <li class="nav-item"><a class="nav-link" href="manage_disputes.php">糾紛管理</a></li>
                         <li class="nav-item"><a class="nav-link" href="manage_blacklist.php">黑名單管理</a></li>
                         <li class="nav-item"><a class="nav-link" href="post_announcement.php">發佈公告</a></li>

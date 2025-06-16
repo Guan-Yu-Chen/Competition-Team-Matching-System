@@ -42,9 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <a class="navbar-brand" href="#">管理員: <?php echo htmlspecialchars($_SESSION['user_name']); ?></a>
         </div>
     </nav>
-    <div class="container-fluid">
+    <div class="container mt-4">
         <div class="row">
-            <nav class="col-md-2 bg-light sidebar">
+            <!-- <nav class="col-md-2 bg-light sidebar">
                 <div class="sidebar-sticky d-flex flex-column" style="height: 100%;">
                     <ul class="nav flex-column flex-grow-1">
                         <li class="nav-item"><a class="nav-link" href="index.php">首頁</a></li>
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <li class="nav-item"><a class="nav-link logout" href="?logout=1">登出</a></li>
                     </ul>
                 </div>
-            </nav>
+            </nav> -->
             <main class="col-md-10 px-4">
                 <h2>創建新競賽</h2>
                 <form method="POST">
