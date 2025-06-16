@@ -146,24 +146,30 @@ if (isset($_GET['ajax'])) {
     // 查看評論
     if ($_GET['ajax'] === 'ratings' && isset($_GET['uid'])) {
         $uid = $_GET['uid'];
-        $stmt = $pdo->prepare("SELECT Reviewer, Rating, Comment FROM TeamRatings WHERE Reviewee = ?");
+        $stmt = $pdo->prepare("SELECT Reviewer, Rating, Comment, Team FROM TeamRatings WHERE Reviewee = ?");
         $stmt->execute([$uid]);
         $ratings = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($ratings as &$r) {
             $stmt2 = $pdo->prepare("SELECT Name FROM User WHERE Account = ?");
             $stmt2->execute([$r['Reviewer']]);
             $r['ReviewerName'] = $stmt2->fetchColumn();
+            // 查詢隊伍名稱
+            $stmt3 = $pdo->prepare("SELECT Team_Name FROM Team WHERE TID = ?");
+            $stmt3->execute([$r['Team']]);
+            $r['TeamName'] = $stmt3->fetchColumn();
         }
         echo json_encode($ratings);
         exit;
     }
     // 新增/編輯評論
-    if ($_GET['ajax'] === 'edit-rating' && isset($_GET['uid'])) {
+    if ($_GET['ajax'] === 'edit-rating' && isset($_GET['uid']) && isset($_GET['team'])) {
+        header('Content-Type: application/json; charset=utf-8'); // 確保回傳 JSON
         $uid = $_GET['uid'];
-        $stmt = $pdo->prepare("SELECT Rating, Comment, Team FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ?");
-        $stmt->execute([$user_id, $uid]);
+        $team = $_GET['team'];
+        $stmt = $pdo->prepare("SELECT Rating, Comment FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ? AND Team = ?");
+        $stmt->execute([$user_id, $uid, $team]);
         $rating = $stmt->fetch(PDO::FETCH_ASSOC);
-        echo json_encode($rating ?: []);
+        echo json_encode($rating ?: new stdClass());
         exit;
     }
     // 儲存/刪除評論
@@ -173,11 +179,11 @@ if (isset($_GET['ajax'])) {
         $comment = $_POST['comment'];
         $TID = $_POST['Team'];
         // 檢查是否已存在
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ?");
-        $stmt->execute([$user_id, $uid]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ? AND Team = ?");
+        $stmt->execute([$user_id, $uid, $TID]);
         if ($stmt->fetchColumn() > 0) {
-            $stmt = $pdo->prepare("UPDATE TeamRatings SET Rating = ?, Comment = ? WHERE Reviewer = ? AND Reviewee = ?");
-            $stmt->execute([$rating, $comment, $user_id, $uid]);
+            $stmt = $pdo->prepare("UPDATE TeamRatings SET Rating = ?, Comment = ? WHERE Reviewer = ? AND Reviewee = ? AND Team = ?");
+            $stmt->execute([$rating, $comment, $user_id, $uid, $TID]);
         } else {
             $stmt = $pdo->prepare("INSERT INTO TeamRatings (Team, Reviewer, Reviewee, Rating, Comment) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([$TID, $user_id, $uid, $rating, $comment]);
@@ -185,10 +191,11 @@ if (isset($_GET['ajax'])) {
         echo json_encode(['success' => true]);
         exit;
     }
-    if ($_GET['ajax'] === 'delete-rating' && isset($_POST['uid'])) {
+    if ($_GET['ajax'] === 'delete-rating' && isset($_POST['uid']) && isset($_POST['Team'])) {
         $uid = $_POST['uid'];
-        $stmt = $pdo->prepare("DELETE FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ?");
-        $stmt->execute([$user_id, $uid]);
+        $TID = $_POST['Team'];
+        $stmt = $pdo->prepare("DELETE FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ? AND Team = ?");
+        $stmt->execute([$user_id, $uid, $TID]);
         echo json_encode(['success' => true]);
         exit;
     }

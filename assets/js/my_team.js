@@ -27,10 +27,13 @@ document.addEventListener('click', function(e) {
                 if (data.length === 0) {
                     html += '<div class="text-muted">尚無評論</div>';
                 } else {
-                    html += `<table class="table table-bordered"><thead><tr><th>評論者</th><th>評分</th><th>評論</th></tr></thead><tbody>`;
+                    html += `<table class="table table-bordered"><thead><tr><th>隊伍</th><th>評論者</th><th>評分</th><th>評論</th></tr></thead><tbody>`;
                     data.forEach(r => {
-                        html += `<tr><td>${r.ReviewerName || r.Reviewer}</td><td>`;//<td>${r.Rating}</td>
-                        //以星數顯示評分
+                        html += `<tr>
+                            <td>${r.TeamName || r.Team || ''}</td>
+                            <td>${r.ReviewerName || r.Reviewer}</td>
+                            <td>`;
+                        // 以星數顯示評分
                         var starating = "";
                         for (var i = 1; i <= 5; i++) {
                             if (i <= r.Rating) {
@@ -40,7 +43,6 @@ document.addEventListener('click', function(e) {
                             }
                         }
                         html += starating;
-
                         html += `</td><td>${r.Comment}</td></tr>`;
                     });
                     html += '</tbody></table>';
@@ -50,7 +52,7 @@ document.addEventListener('click', function(e) {
     } else if (type === 'edit-rating') {
         const uid = btn.getAttribute('data-uid');
         const tid = btn.getAttribute('data-team-id'); //獲取tid標籤
-        fetch('my_team.php?ajax=edit-rating&uid=' + encodeURIComponent(uid))
+        fetch('my_team.php?ajax=edit-rating&uid=' + encodeURIComponent(uid) + '&team=' + encodeURIComponent(tid))
             .then(res => res.json())
             .then(data => {
                 let html = `<h5>新增/編輯評論</h5>
@@ -103,7 +105,7 @@ document.addEventListener('click', function(e) {
                     fetch('my_team.php?ajax=delete-rating', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: 'uid=' + encodeURIComponent(uid)
+                        body: 'uid=' + encodeURIComponent(uid) + '&Team=' + encodeURIComponent(tid)
                     }).then(res => res.json()).then(r => {
                         if (r.success) {
                             document.getElementById('mainModal').classList.remove('active');

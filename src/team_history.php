@@ -55,15 +55,16 @@ if (isset($_GET['team_info']) && isset($_GET['team_id'])) {
     $skills = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
     // 取得隊伍成員
+    // 取得隊伍成員
     if ($type === 'current') {
         // 目前成員（Leave_Date 為 NULL）
-        $stmt = $pdo->prepare("SELECT m.Member, u.Name FROM TeamMembershipHistory m JOIN User u ON m.Member = u.Account WHERE m.Team = ? AND m.Leave_Date IS NULL");
+        $stmt = $pdo->prepare("SELECT m.Member, u.Name AS name FROM TeamMembershipHistory m JOIN User u ON m.Member = u.Account WHERE m.Team = ? AND m.Leave_Date IS NULL");
         $stmt->execute([$team_id]);
         $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
         // 歷史成員（在該生加入與離開之間有同隊過的人）
         $stmt = $pdo->prepare(
-            "SELECT DISTINCT m.Member, u.Name
+            "SELECT DISTINCT m.Member, u.Name AS name
             FROM TeamMembershipHistory m
             JOIN User u ON m.Member = u.Account
             WHERE m.Team = :team_id
@@ -84,7 +85,7 @@ if (isset($_GET['team_info']) && isset($_GET['team_id'])) {
     $leader_name = '';
     foreach ($members as $k => $m) {
         if ($m['Member'] === $leader_id) {
-            $leader_name = $m['Name'];
+            $leader_name = $m['name'];
             unset($members[$k]);
             break;
         }
@@ -259,7 +260,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'rate_members' && isset($_GET['tea
                                 <td>
                                     <button class="btn btn-primary btn-sm view-team-btn"
                                         data-team="' . htmlspecialchars($row['TID']) . '"
-                                        data-type="past"
+                                        data-type="current"
                                         data-join="' . htmlspecialchars($row['Join_Date']) . '"
                                         data-leave="尚未離開">查看</button>
                                     <button class="btn btn-success btn-sm rate-members-btn"
@@ -471,7 +472,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'rate_members' && isset($_GET['tea
             const leaveDate = btn.getAttribute('data-leave');
             document.getElementById('rateMembersModal').classList.remove('active');
             // 取得評論內容
-            fetch(`my_team.php?ajax=edit-rating&uid=${encodeURIComponent(uid)}`)
+            fetch(`my_team.php?ajax=edit-rating&uid=${encodeURIComponent(uid)}&team=${encodeURIComponent(teamId)}`)
                 .then(res => res.json())
                 .then(data => {
                     let html = `<h5>新增/編輯對 ${uname} 的評論：</h5>
@@ -534,7 +535,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'rate_members' && isset($_GET['tea
                         fetch('my_team.php?ajax=delete-rating', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                            body: 'uid=' + encodeURIComponent(uid)
+                            body: 'uid=' + encodeURIComponent(uid) + '&Team=' + encodeURIComponent(teamId)
                         }).then(res => res.json()).then(r => {
                             if (r.success) {
                                 document.body.removeChild(modal);
