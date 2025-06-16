@@ -331,7 +331,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'rate_members' && isset($_GET['tea
                                 <td>${stars}</td>
                                 <td>${m.Comment !== null && m.Comment !== '' ? m.Comment : '無'}</td>
                                 <td>
-                                    <button class="btn btn-primary btn-sm rate-edit-btn"
+                                    <button class="btn btn-success btn-sm rate-edit-btn"
                                         data-uid="${m.Member}"
                                         data-name="${m.Name}"
                                         data-team="${teamId}"
