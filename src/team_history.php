@@ -100,6 +100,40 @@ if (isset($_GET['team_info']) && isset($_GET['team_id'])) {
     ]);
     exit;
 }
+// 處理 AJAX：評論成員
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'rate_members' && isset($_GET['team_id']) && isset($_GET['join_date']) && isset($_GET['leave_date'])) {
+    $team_id = $_GET['team_id'];
+    $join_date = $_GET['join_date'];
+    $leave_date = $_GET['leave_date'];
+    $current_user = $_SESSION['user_id'];
+
+    // 取得同隊成員
+    $stmt = $pdo->prepare(
+        "SELECT m.Member, u.Name, t.Leader
+        FROM TeamMembershipHistory m
+        JOIN User u ON m.Member = u.Account
+        JOIN Team t ON m.Team = t.TID
+        WHERE m.Team = ?
+        AND m.Join_Date <= ?
+        AND (m.Leave_Date IS NULL OR m.Leave_Date >= ?)"
+    );
+    $stmt->execute([$team_id, $leave_date, $join_date]);
+    $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 查詢每個成員的評論
+    foreach ($members as &$m) {
+        $stmt2 = $pdo->prepare("SELECT Rating, Comment FROM TeamRatings WHERE Reviewer = ? AND Reviewee = ? AND Team = ?");
+        $stmt2->execute([$current_user, $m['Member'], $team_id]);
+        $rating = $stmt2->fetch(PDO::FETCH_ASSOC);
+        $m['Rating'] = $rating['Rating'] ?? null;
+        $m['Comment'] = $rating['Comment'] ?? null;
+    }
+    unset($m);
+
+    header('Content-Type: application/json');
+    echo json_encode($members);
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -110,6 +144,11 @@ if (isset($_GET['team_info']) && isset($_GET['team_id'])) {
     <link href="../assets/css/style.css" rel="stylesheet">
     <style>
         .navbar-brand { color: #8f94fb; }
+
+        .star-yellow {
+            color: #ffc107;
+            font-size: 1.2em;
+        }
         
         .sidebar-sticky { min-height: 100vh; }
         .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }
@@ -215,7 +254,19 @@ if (isset($_GET['team_info']) && isset($_GET['team_id'])) {
                                 <td>' . htmlspecialchars($row['Team_Name']) . '</td>
                                 <td>' . htmlspecialchars($row['Join_Date']) . '</td>
                                 <td>' . htmlspecialchars($row['Leave_Date']) . '</td>
-                                <td><button class="btn btn-primary btn-sm view-team-btn" data-team="' . htmlspecialchars($row['TID']) . '" data-type="past" data-join="' . htmlspecialchars($row['Join_Date']) . '" data-leave="' . htmlspecialchars($row['Leave_Date']) . '">查看</button></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm view-team-btn"
+                                        data-team="' . htmlspecialchars($row['TID']) . '"
+                                        data-type="past"
+                                        data-join="' . htmlspecialchars($row['Join_Date']) . '"
+                                        data-leave="' . htmlspecialchars($row['Leave_Date']) . '">查看</button>
+                                    <button class="btn btn-success btn-sm rate-members-btn"
+                                        data-team="' . htmlspecialchars($row['TID']) . '"
+                                        data-join="' . htmlspecialchars($row['Join_Date']) . '"
+                                        data-leave="' . htmlspecialchars($row['Leave_Date']) . '">
+                                        評論成員
+                                    </button>
+                                </td>
                             </tr>';
                         }
                         if (!$hasPast) {
@@ -238,8 +289,66 @@ if (isset($_GET['team_info']) && isset($_GET['team_id'])) {
             </div>
         </div>
     </div>
+    <div class="modal-bg" id="rateMembersModal">
+        <div class="modal-box">
+            <span class="modal-close" id="rateMembersModalClose">&times;</span>
+            <div id="rateMembersModalContent"></div>
+        </div>
+    </div>
 
     <script>
+        // 重新載入評論成員 modal
+        function reloadRateMembersModal(teamId, joinDate, leaveDate) {
+            fetch(`team_history.php?ajax=rate_members&team_id=${encodeURIComponent(teamId)}&join_date=${encodeURIComponent(joinDate)}&leave_date=${encodeURIComponent(leaveDate)}`)
+                .then(res => res.json())
+                .then(members => {
+                    let html = `<h5>評價成員：</h5>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>成員名稱</th>
+                                    <th>身分</th>
+                                    <th>評分</th>
+                                    <th>評論</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                    if (members.length === 0) {
+                        html += `<tr><td colspan="5" class="text-muted">沒有同隊成員</td></tr>`;
+                    } else {
+                        members.forEach(m => {
+                            let stars = '無';
+                            if (m.Rating !== null && m.Rating !== '') {
+                                const rating = parseInt(m.Rating, 10);
+                                stars = `<span class="star-yellow">` +
+                                    '★'.repeat(rating) + '☆'.repeat(5 - rating) +
+                                    `</span>`;
+                            }
+                            html += `<tr>
+                                <td>${m.Name}</td>
+                                <td>${m.Member === m.Leader ? '隊長' : '隊員'}</td>
+                                <td>${stars}</td>
+                                <td>${m.Comment !== null && m.Comment !== '' ? m.Comment : '無'}</td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm rate-edit-btn"
+                                        data-uid="${m.Member}"
+                                        data-name="${m.Name}"
+                                        data-team="${teamId}"
+                                        data-join="${joinDate}"
+                                        data-leave="${leaveDate}">
+                                        新增/編輯評論
+                                    </button>
+                                </td>
+                            </tr>`;
+                        });
+                    }
+                    html += `</tbody></table>`;
+                    document.getElementById('rateMembersModalContent').innerHTML = html;
+                    document.getElementById('rateMembersModal').classList.add('active');
+                });
+        }
+
         document.querySelectorAll('.view-team-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const teamId = btn.getAttribute('data-team');
@@ -298,7 +407,116 @@ if (isset($_GET['team_info']) && isset($_GET['team_id'])) {
         document.getElementById('teamModal').onclick = function(e) {
             if (e.target === this) this.classList.remove('active');
         };
+        document.querySelectorAll('.rate-members-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const teamId = btn.getAttribute('data-team');
+                const joinDate = btn.getAttribute('data-join');
+                const leaveDate = btn.getAttribute('data-leave');
+                reloadRateMembersModal(teamId, joinDate, leaveDate);
+            });
+        });
+
+        // 關閉 rateMembersModal
+        document.getElementById('rateMembersModalClose').onclick = function() {
+            document.getElementById('rateMembersModal').classList.remove('active');
+        };
+        document.getElementById('rateMembersModal').onclick = function(e) {
+            if (e.target === this) this.classList.remove('active');
+        };
+
+        // 動態代理 新增/編輯評論 按鈕
+        document.body.addEventListener('click', function(e) {
+            const btn = e.target.closest('.rate-edit-btn');
+            if (!btn) return;
+            const uid = btn.getAttribute('data-uid');
+            const uname = btn.getAttribute('data-name');
+            const teamId = btn.getAttribute('data-team');
+            const joinDate = btn.getAttribute('data-join');
+            const leaveDate = btn.getAttribute('data-leave');
+            document.getElementById('rateMembersModal').classList.remove('active');
+            // 取得評論內容
+            fetch(`my_team.php?ajax=edit-rating&uid=${encodeURIComponent(uid)}`)
+                .then(res => res.json())
+                .then(data => {
+                    let html = `<h5>新增/編輯對 ${uname} 的評論：</h5>
+                        <form id="editRatingForm">
+                            <div class="mb-2">
+                                <label>評分：</label>
+                                <input type="number" name="rating" min="1" max="5" class="form-control" value="${data?.Rating || ''}">
+                            </div>
+                            <div class="mb-2">
+                                <label>評論：</label>
+                                <textarea name="comment" class="form-control">${data?.Comment || ''}</textarea>
+                            </div>
+                            <input type="hidden" name="Team" value="${teamId}">
+                            <input type="hidden" name="uid" value="${uid}">
+                            <button type="submit" class="btn btn-primary" id="submitRatingBtn" disabled>提交</button>
+                            <button type="button" class="btn btn-danger" id="deleteRatingBtn">刪除</button>
+                            <button type="button" class="btn btn-secondary" id="cancelEditRatingBtn">取消</button>
+                        </form>`;
+                    // 建立modal
+                    let modal = document.createElement('div');
+                    modal.className = 'modal-bg active';
+                    modal.id = 'editRatingModal';
+                    modal.innerHTML = `<div class="modal-box">
+                        <span class="modal-close" id="editRatingModalClose">&times;</span>
+                        <div>${html}</div>
+                    </div>`;
+                    document.body.appendChild(modal);
+
+                    // 輸入檢查
+                    const ratingInput = modal.querySelector('input[name="rating"]');
+                    const commentInput = modal.querySelector('textarea[name="comment"]');
+                    const submitBtn = modal.querySelector('#submitRatingBtn');
+                    function checkInputs() {
+                        if (ratingInput.value.trim() && commentInput.value.trim()) {
+                            submitBtn.disabled = false;
+                        } else {
+                            submitBtn.disabled = true;
+                        }
+                    }
+                    ratingInput.addEventListener('input', checkInputs);
+                    commentInput.addEventListener('input', checkInputs);
+                    checkInputs();
+
+                    // 提交
+                    modal.querySelector('#editRatingForm').onsubmit = function(e) {
+                        e.preventDefault();
+                        const formData = new FormData(this);
+                        fetch('my_team.php?ajax=save-rating', {
+                            method: 'POST',
+                            body: formData
+                        }).then(res => res.json()).then(r => {
+                            if (r.success) {
+                                document.body.removeChild(modal);
+                                reloadRateMembersModal(teamId, joinDate, leaveDate);
+                            }
+                        });
+                    };
+                    // 刪除
+                    modal.querySelector('#deleteRatingBtn').onclick = function() {
+                        fetch('my_team.php?ajax=delete-rating', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                            body: 'uid=' + encodeURIComponent(uid)
+                        }).then(res => res.json()).then(r => {
+                            if (r.success) {
+                                document.body.removeChild(modal);
+                                reloadRateMembersModal(teamId, joinDate, leaveDate);
+                            }
+                        });
+                    };
+                    // 關閉modal
+                    function closeEditModal() {
+                        document.body.removeChild(modal);
+                        reloadRateMembersModal(teamId, joinDate, leaveDate);
+                    }
+                    modal.querySelector('#editRatingModalClose').onclick = closeEditModal;
+                    modal.querySelector('#cancelEditRatingBtn').onclick = closeEditModal;
+                    modal.onclick = function(e) {
+                        if (e.target === modal) closeEditModal();
+                    };
+                });
+        });
     </script>
-    <script src="assets/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <script src
