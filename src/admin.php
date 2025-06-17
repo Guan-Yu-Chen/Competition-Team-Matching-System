@@ -19,7 +19,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     <meta charset="UTF-8">
     <title>管理員儀表板</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="../assets/css/style.css" rel="stylesheet">
     <style>
         .admin-header {
             font-size: 1.1rem;
@@ -37,7 +37,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
         }
         .admin-header .admin-name {
             font-weight: 500;
-            color: #3c3163;
+            color: #8f94fb;
         }
         .navbar {
             padding-top: 0.4rem;

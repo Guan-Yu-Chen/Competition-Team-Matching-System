@@ -41,7 +41,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dispute_id'], $_POST[
     <meta charset="UTF-8">
     <title>糾紛管理</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="../assets/css/style.css" rel="stylesheet">
+    <style>
+        .navbar-brand { color: #8f94fb; }
+        .navbar {
+            padding-top: 0.4rem;
+            padding-bottom: 0.4rem;
+        }
+        .sidebar-sticky { min-height: 100vh; }
+        .sidebar .nav-link.active { font-weight: bold; color: #4e54c8 !important; }
+        .sidebar .nav-link { cursor: pointer; }
+        .sidebar .team-list { display: block; padding-left: 1.5em; }
+    </style>
 </head>
 <body>
     <!-- 頁首 -->
@@ -52,23 +63,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dispute_id'], $_POST[
     </nav>
 
     <!-- 主要內容 -->
-    <div class="container mt-4">
+    <div class="container-fluid">
         <div class="row">
             <!-- 側邊欄 -->
-            <!-- <nav class="col-md-2 bg-light sidebar">
+            <nav class="col-md-2 bg-light sidebar">
                 <div class="sidebar-sticky d-flex flex-column" style="height: 100%;">
                     <ul class="nav flex-column flex-grow-1">
                         <li class="nav-item"><a class="nav-link" href="index.php">首頁</a></li>
                         <li class="nav-item"><a class="nav-link" href="create_competition.php">創建競賽</a></li>
-                        <li class="nav-item"><a class="nav-link" href="admin.php">競賽管理</a></li>
+                        <!-- <li class="nav-item"><a class="nav-link active" href="#competitions">競賽管理</a></li> -->
+                        <li class="nav-item"><a class="nav-link" href="manage_teamratings.php">評價管理</a></li>
                         <li class="nav-item"><a class="nav-link active" href="manage_disputes.php">糾紛管理</a></li>
                         <li class="nav-item"><a class="nav-link" href="manage_blacklist.php">黑名單管理</a></li>
                         <li class="nav-item"><a class="nav-link" href="post_announcement.php">發佈公告</a></li>
+                        <li class="nav-item"><a class="nav-link" href="manage_categories.php">管理分類</a></li>
                         <li class="nav-item"><a class="nav-link logout" href="?logout=1">登出</a></li>
                     </ul>
                 </div>
-            </nav> -->
-
+            </nav>
             <!-- 動態內容 -->
             <main class="col-md-10 px-4">
                 <!-- ver0.2 將糾紛管理分成兩部分，待處理糾紛和已處理糾紛顯示。 -->

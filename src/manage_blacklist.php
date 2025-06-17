@@ -70,52 +70,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>黑名單管理</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="../assets/css/style.css" rel="stylesheet">
+    <style>
+        .navbar-brand { color: #8f94fb; }
+    </style>
 </head>
 <body>
-    <div class="container my-5">
-        <h2>黑名單管理</h2>
-        <form method="POST">
-            <div class="mb-3">
-                <label for="sid" class="form-label">學生ID</label>
-                <input type="text" class="form-control" id="sid" name="sid" required>
-            </div>
-            <div class="mb-3">
-                <label for="reason" class="form-label">原因（可選）</label>
-                <textarea class="form-control" id="reason" name="reason"></textarea>
-            </div>
-            <button type="submit" class="btn btn-danger">加入黑名單</button>
-        </form>
-        <h3 class="mt-4">黑名單列表</h3>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>學生ID</th>
-                    <th>原因</th>
-                </tr>
-            </thead>
-            <!-- ver0.2 新增黑名單刪除按鈕。 -->
-            <tbody>
-                <?php
-                $stmt = $pdo->query("SELECT SID, Reason FROM Blacklist");
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    echo '
-                    <tr>
-                        <td>' . htmlspecialchars($row['SID']) . '</td>
-                        <td>' . htmlspecialchars($row['Reason'] ?? '') . '</td>
-                        <td>
-                            <form method="post" onsubmit="return confirm(\'確定要刪除 SID ' . htmlspecialchars($row['SID']) . ' 嗎？\');" style="display:inline;">
-                                <input type="hidden" name="action" value="delete">
-                                <input type="hidden" name="delete_sid" value="' . htmlspecialchars($row['SID']) . '">
-                                <button type="submit">刪除</button>
-                            </form>
-                        </td>
-                    </tr>';
-                }
-                ?>
-            </tbody>
-        </table>
-        <a href="admin.php" class="btn btn-secondary">返回</a>
+    <nav class="navbar navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="#">管理員: <?php echo htmlspecialchars($_SESSION['user_name']); ?></a>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-2 bg-light sidebar">
+                <div class="sidebar-sticky d-flex flex-column" style="height: 100%;">
+                    <ul class="nav flex-column flex-grow-1">
+                        <li class="nav-item"><a class="nav-link" href="index.php">首頁</a></li>
+                        <li class="nav-item"><a class="nav-link" href="create_competition.php">創建競賽</a></li>
+                        <!-- <li class="nav-item"><a class="nav-link active" href="#competitions">競賽管理</a></li> -->
+                        <li class="nav-item"><a class="nav-link" href="manage_teamratings.php">評價管理</a></li>
+                        <li class="nav-item"><a class="nav-link" href="manage_disputes.php">糾紛管理</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="manage_blacklist.php">黑名單管理</a></li>
+                        <li class="nav-item"><a class="nav-link" href="post_announcement.php">發佈公告</a></li>
+                        <li class="nav-item"><a class="nav-link" href="manage_categories.php">管理分類</a></li>
+                        <li class="nav-item"><a class="nav-link logout" href="?logout=1">登出</a></li>
+                    </ul>
+                </div>
+            </nav>
+            <main class="col-md-10 px-4">
+                <h2>黑名單管理</h2>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="sid" class="form-label">學生ID</label>
+                        <input type="text" class="form-control" id="sid" name="sid" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">原因（可選）</label>
+                        <textarea class="form-control" id="reason" name="reason"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger">加入黑名單</button>
+                </form>
+                <h3 class="mt-4">黑名單列表</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>學生ID</th>
+                            <th>原因</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <!-- ver0.2 新增黑名單刪除按鈕。 -->
+                    <tbody>
+                        <?php
+                        $stmt = $pdo->query("SELECT SID, Reason FROM Blacklist");
+                        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                            echo '
+                            <tr>
+                                <td>' . htmlspecialchars($row['SID']) . '</td>
+                                <td>' . htmlspecialchars($row['Reason'] ?? '') . '</td>
+                                <td>
+                                    <form method="post" onsubmit="return confirm(\'確定要刪除 SID ' . htmlspecialchars($row['SID']) . ' 嗎？\');" style="display:inline;">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="delete_sid" value="' . htmlspecialchars($row['SID']) . '">
+                                        <button type="submit" class="btn btn-danger">刪除</button>
+                                    </form>
+                                </td>
+                            </tr>';
+                        }
+                        ?>
+                    </tbody>
+                </table>
+                <a href="admin.php" class="btn btn-secondary">返回</a>
+            </main>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

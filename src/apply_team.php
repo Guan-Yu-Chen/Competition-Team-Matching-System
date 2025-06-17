@@ -20,12 +20,6 @@ $stmt = $pdo->prepare("SELECT Team FROM TeamMembershipHistory WHERE Member = ? A
 $stmt->execute([$user_id]);
 $my_team_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-// 取得所有正在招募的隊伍，排除自己目前已在的隊伍
-// 取得目前所有隊伍（我有參加且未離開）
-$stmt = $pdo->prepare("SELECT Team FROM TeamMembershipHistory WHERE Member = ? AND Leave_Date IS NULL");
-$stmt->execute([$user_id]);
-$my_team_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
 // 取得已申請過的隊伍
 $stmt = $pdo->prepare("SELECT TeamID FROM Applicationlist WHERE ApplicantID = ?");
 $stmt->execute([$user_id]);
@@ -34,20 +28,48 @@ $applied_team_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
 // 合併排除條件
 $exclude_ids = array_merge($my_team_ids, $applied_team_ids);
 
+// 取得自己有的技能
+$stmt = $pdo->prepare("SELECT Skill FROM skill WHERE SID = ?");
+$stmt->execute([$user_id]);
+$my_skills = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+// 處理技能篩選
+$filter_skills = [];
+if (isset($_GET['skill']) && is_array($_GET['skill'])) {
+    $filter_skills = array_filter($_GET['skill'], function($s) use ($my_skills) {
+        return in_array($s, $my_skills);
+    });
+}
+
+// 取得所有正在招募的隊伍，排除自己目前已在的隊伍和已申請的隊伍
+$recruitments = [];
 if (count($exclude_ids) > 0) {
     $in = str_repeat('?,', count($exclude_ids) - 1) . '?';
-    $sql = "SELECT tr.Team AS TID, t.Team_Name, t.Leader
+    $base_sql = "SELECT tr.Team AS TID, t.Team_Name, t.Leader
             FROM TeamRecruitment tr
             JOIN Team t ON tr.Team = t.TID
             WHERE tr.Team NOT IN ($in)";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($exclude_ids);
+    $params = $exclude_ids;
 } else {
-    $stmt = $pdo->prepare("SELECT tr.Team AS TID, t.Team_Name, t.Leader
-                           FROM TeamRecruitment tr
-                           JOIN Team t ON tr.Team = t.TID");
-    $stmt->execute();
+    $base_sql = "SELECT tr.Team AS TID, t.Team_Name, t.Leader
+            FROM TeamRecruitment tr
+            JOIN Team t ON tr.Team = t.TID";
+    $params = [];
 }
+
+// 如果有篩選技能
+if (!empty($filter_skills)) {
+    // 只顯示隊伍要求技能有包含勾選技能的隊伍
+    $skill_conditions = [];
+    foreach ($filter_skills as $i => $skill) {
+        $skill_conditions[] = "EXISTS (SELECT 1 FROM teamrequireskill trs WHERE trs.Team = tr.Team AND trs.Skill = ?)";
+        $params[] = $skill;
+    }
+    $base_sql .= (strpos($base_sql, 'WHERE') !== false ? " AND " : " WHERE ") . "(" . implode(" OR ", $skill_conditions) . ")";
+}
+
+$stmt = $pdo->prepare($base_sql);
+$stmt->execute($params);
 $recruitments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 取得所有隊長名稱與技能
@@ -59,7 +81,7 @@ foreach ($recruitments as $rec) {
     $leader_name = $stmt->fetchColumn();
 
     // 需要技能
-    $stmt = $pdo->prepare("SELECT Skill FROM TeamRequireSkill WHERE Team = ?");
+    $stmt = $pdo->prepare("SELECT Skill FROM teamrequireskill WHERE Team = ?");
     $stmt->execute([$rec['TID']]);
     $skills = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -181,36 +203,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['apply_tid'])) {
                 </div>
             </nav>
             <main class="col-md-10 px-4">
-                <h2>招募中的隊伍</h2>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2>招募中的隊伍</h2>
+                    <!-- 篩選條件按鈕 -->
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#filterSkillModal">篩選條件</button>
+                </div>
                 <?php if (isset($success)) echo "<div class='alert alert-success'>$success</div>"; ?>
                 <table class="table table-striped">
                     <thead>
                         <tr>
                             <th>隊伍名稱</th>
+                            <th>隊長</th>
+                            <th>要求技能</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
+                        <?php if (count($recruitments) === 0): ?>
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">目前沒有符合條件的隊伍</td>
+                            </tr>
+                        <?php else: ?>
                         <?php foreach ($recruitments as $rec): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($rec['Team_Name']); ?></td>
+                                <td><?php echo htmlspecialchars($team_info[$rec['TID']]['leader']); ?></td>
+                                <td><?php echo htmlspecialchars(implode(', ', $team_info[$rec['TID']]['skills'])); ?></td>
                                 <td>
-                                    <div class="d-flex gap-2">
-                                        <button type="button"
-                                            class="btn btn-primary btn-sm view-team-btn"
-                                            data-leader="<?php echo htmlspecialchars($team_info[$rec['TID']]['leader']); ?>"
-                                            data-skills="<?php echo htmlspecialchars(implode(', ', $team_info[$rec['TID']]['skills'])); ?>"
-                                            data-teamname="<?php echo htmlspecialchars($rec['Team_Name']); ?>"
-                                        >查看隊伍</button>
-                                        <button type="button"
-                                            class="btn btn-success btn-sm apply-btn"
-                                            data-tid="<?php echo htmlspecialchars($rec['TID']); ?>"
-                                            data-teamname="<?php echo htmlspecialchars($rec['Team_Name']); ?>"
-                                        >申請入隊</button>
-                                    </div>
+                                    <form method="POST" style="display:inline;">
+                                        <input type="hidden" name="apply_tid" value="<?php echo htmlspecialchars($rec['TID']); ?>">
+                                        <button type="submit" class="btn btn-success btn-sm">申請入隊</button>
+                                    </form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
                 <a href="student.php" class="btn btn-secondary">返回</a>
@@ -218,73 +245,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['apply_tid'])) {
         </div>
     </div>
 
-    <!-- 申請入隊 Modal -->
-    <div class="modal-bg" id="applyModal">
-        <div class="modal-box">
-            <span class="modal-close" id="applyModalClose">&times;</span>
-            <div id="applyModalContent"></div>
-            <form id="applyForm" method="POST" style="display:none;">
-                <input type="hidden" name="apply_tid" id="apply_tid">
+    <!-- 技能篩選 Modal -->
+    <div class="modal fade" id="filterSkillModal" tabindex="-1" aria-labelledby="filterSkillModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="GET" action="" id="filterSkillForm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="filterSkillModalLabel">技能篩選</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                    </div>
+                    <div class="modal-body" id="filter-skill-container">
+                        <?php
+                        if (empty($my_skills)) {
+                            echo '<div class="text-muted">您尚未設定任何技能，請先到個人檔案新增技能。</div>';
+                        } else {
+                            foreach ($my_skills as $skill) {
+                                $is_checked = in_array($skill, $filter_skills) ? 'checked' : '';
+                                echo '
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="skill[]" value="' . htmlspecialchars($skill) . '" id="filter_skill_' . htmlspecialchars($skill) . '" ' . $is_checked . '>
+                                    <label class="form-check-label" for="filter_skill_' . htmlspecialchars($skill) . '">' . htmlspecialchars($skill) . '</label>
+                                </div>';
+                            }
+                        }
+                        ?>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="clearSkillFilterBtn">清除</button>
+                        <button type="submit" class="btn btn-primary">套用篩選</button>
+                    </div>
+                </div>
             </form>
-            <div class="mt-3 d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-secondary btn-sm" id="applyCancelBtn">取消</button>
-                <button type="button" class="btn btn-success btn-sm" id="applyConfirmBtn">確認申請</button>
-            </div>
         </div>
     </div>
-    <!-- 查看隊伍 Modal -->
-    <div class="modal-bg" id="teamModal">
-        <div class="modal-box">
-            <span class="modal-close" id="modalClose">&times;</span>
-            <div id="modalContent"></div>
-        </div>
-    </div>
+    <!-- 技能篩選 Modal end -->
 
     <script>
-        // 查看隊伍
-        document.querySelectorAll('.view-team-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                const teamName = btn.getAttribute('data-teamname');
-                const leader = btn.getAttribute('data-leader');
-                const skills = btn.getAttribute('data-skills');
-                let html = `<h5>隊伍名稱：${teamName}</h5>`;
-                html += `<div><strong>隊長：</strong>${leader}</div>`;
-                html += `<div class="mt-2"><strong>隊伍要求技能：</strong> ${skills || '無'}</div>`;
-                document.getElementById('modalContent').innerHTML = html;
-                document.getElementById('teamModal').classList.add('active');
+        // 清除技能篩選
+        document.getElementById('clearSkillFilterBtn').addEventListener('click', function () {
+            document.querySelectorAll('#filter-skill-container input[type="checkbox"]').forEach(function (checkbox) {
+                checkbox.checked = false;
             });
         });
-        document.getElementById('modalClose').onclick = function() {
-            document.getElementById('teamModal').classList.remove('active');
-        };
-        document.getElementById('teamModal').onclick = function(e) {
-            if (e.target === this) this.classList.remove('active');
-        };
-
-        // 申請入隊
-        document.querySelectorAll('.apply-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                const tid = btn.getAttribute('data-tid');
-                const teamName = btn.getAttribute('data-teamname');
-                document.getElementById('applyModalContent').innerHTML =
-                    `<div>是否要申請加入 <strong>${teamName}</strong>？</div>`;
-                document.getElementById('apply_tid').value = tid;
-                document.getElementById('applyModal').classList.add('active');
-            });
-        });
-        document.getElementById('applyModalClose').onclick = function() {
-            document.getElementById('applyModal').classList.remove('active');
-        };
-        document.getElementById('applyCancelBtn').onclick = function() {
-            document.getElementById('applyModal').classList.remove('active');
-        };
-        document.getElementById('applyConfirmBtn').onclick = function() {
-            document.getElementById('applyForm').submit();
-        };
-        document.getElementById('applyModal').onclick = function(e) {
-            if (e.target === this) this.classList.remove('active');
-        };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-</html
