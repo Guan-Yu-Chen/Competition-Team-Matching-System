@@ -6,6 +6,12 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     exit;
 }
 
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header("Location: index.php");
+    exit;
+}
+
 // ver0.2 修正新增公告跳轉頁面"Location: post_announcement.php"
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -7,6 +7,12 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     exit;
 }
 
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header("Location: index.php");
+    exit;
+}
+
 // 處理刪除請求
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_team_review'])) {
     $team = $_POST['team'];

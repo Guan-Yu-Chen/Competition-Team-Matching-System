@@ -18,6 +18,12 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 
 // ver0.2 確認黑名單SID是否存在student TABLE。其後，若SID已經在黑名單則顯示警告，否則新增至黑名單。
 
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header("Location: index.php");
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
     if (isset($_POST['delete_sid'])) {
         $deleteSid = $_POST['delete_sid'];
